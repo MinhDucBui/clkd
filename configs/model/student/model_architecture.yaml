@@ -1,0 +1,4 @@
+student_model_type: "distilbert"
+student_model_name_or_path: 'distilbert-base-uncased'
+pool_fn: "mean"
+#pretrained_weights: False

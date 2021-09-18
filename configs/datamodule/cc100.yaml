@@ -1,0 +1,9 @@
+_target_: src.datamodules.cc_100_datamodule.CC100DataModule
+
+teacher_model_type: ${model.teacher.teacher_model_type}
+teacher_model_name_or_path: ${model.teacher.teacher_model_name_or_path}
+data_dir: ${data_dir}/eu.txt
+batch_size: 1
+num_workers: 0
+pin_memory: false
+num_labels: 30522

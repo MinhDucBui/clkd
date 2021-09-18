@@ -1,0 +1,5 @@
+defaults:
+  - model_architecture
+
+_target_: src.models.teacher.TeacherModel
+pool_fn: "cls"

@@ -3,11 +3,12 @@
 # specify here default training configuration
 defaults:
   - trainer: default.yaml
-  - model: mnist_model.yaml
-  - datamodule: mnist_datamodule.yaml
+  - model: general_distillation.yaml
+  - model/teacher: teacher_model.yaml
+  - model/student: student_model.yaml
+  - datamodule: cc100.yaml
   - callbacks: default.yaml # set this to null if you don't want to use callbacks
   - logger: null # set logger here or use command line (e.g. `python run.py logger=wandb`)
-
   - experiment: null
   - hparams_search: null
 

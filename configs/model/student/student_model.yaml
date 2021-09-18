@@ -1,0 +1,5 @@
+defaults:
+  - model_architecture
+
+_target_: src.models.student.StudentModel
+pool_fn: "cls"

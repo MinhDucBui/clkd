@@ -1,5 +1,5 @@
 from typing import List, Optional
-
+from omegaconf import OmegaConf
 import hydra
 from omegaconf import DictConfig
 from pytorch_lightning import (
@@ -31,13 +31,14 @@ def train(config: DictConfig) -> Optional[float]:
     if "seed" in config:
         seed_everything(config.seed, workers=True)
 
+    # TODO: DATAMODULE
     # Init lightning datamodule
     log.info(f"Instantiating datamodule <{config.datamodule._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(config.datamodule)
 
     # Init lightning model
-    log.info(f"Instantiating model <{config.model._target_}>")
-    model: LightningModule = hydra.utils.instantiate(config.model)
+    log.info(f"Instantiating Distillation model <{config.model._target_}>")
+    distillation: LightningModule = hydra.utils.instantiate(config.model)
 
     # Init lightning callbacks
     callbacks: List[Callback] = []
@@ -65,7 +66,7 @@ def train(config: DictConfig) -> Optional[float]:
     log.info("Logging hyperparameters!")
     utils.log_hyperparameters(
         config=config,
-        model=model,
+        model=distillation,
         datamodule=datamodule,
         trainer=trainer,
         callbacks=callbacks,
@@ -74,7 +75,7 @@ def train(config: DictConfig) -> Optional[float]:
 
     # Train the model
     log.info("Starting training!")
-    trainer.fit(model=model, datamodule=datamodule)
+    trainer.fit(model=distillation, datamodule=datamodule)
 
     # Evaluate model on test set, using the best model achieved during training
     if config.get("test_after_training") and not config.trainer.get("fast_dev_run"):
@@ -85,7 +86,7 @@ def train(config: DictConfig) -> Optional[float]:
     log.info("Finalizing!")
     utils.finish(
         config=config,
-        model=model,
+        model=distillation,
         datamodule=datamodule,
         trainer=trainer,
         callbacks=callbacks,
