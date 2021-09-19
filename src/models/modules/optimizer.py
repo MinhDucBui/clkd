@@ -1,11 +1,15 @@
 from pytorch_lightning import LightningModule, Trainer
 from transformers import AutoModel, get_linear_schedule_with_warmup, AdamW
+import sys
 
 
 class OptimizerMixin(LightningModule):
     def setup(self, stage):
         if stage == "fit":
-            self.total_steps = self.hparams.total_steps
+            if self.hparams.total_steps:
+                self.total_steps = self.hparams.total_steps
+            else:
+                sys.exit("As we are using an IterableDataset structure, please specify the max_steps in Trainer.")
 
     def configure_optimizers(self):
         "Prepare optimizer and schedule (linear warmup and decay)"

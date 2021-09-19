@@ -94,10 +94,13 @@ class GeneralDistillation(OptimizerMixin, LightningModule):
         # Check output sizes
         assert student_logits.size() == teacher_logits.size()
 
+        # TODO: Change Evaluation Metric
         self.val_mse(student_logits, teacher_logits)
 
     def validation_epoch_end(self, outputs):
         val_mse = self.val_mse.compute()
+
+        # TODO: Change Evaluation Metric
         self.log("val/mse", val_mse, prog_bar=True)
 
     def test_step(self, batch, batch_idx):
@@ -118,10 +121,13 @@ class GeneralDistillation(OptimizerMixin, LightningModule):
         # Check output sizes
         assert student_logits.size() == teacher_logits.size()
 
+        # TODO: Change Evaluation Metric
         self.test_mse(student_logits, teacher_logits)
 
     def test_epoch_end(self, outputs):
         test_mse = self.test_mse.compute()
+
+        # TODO: Change Evaluation Metric 
         self.log("test/mse", test_mse, prog_bar=True)
 
 
