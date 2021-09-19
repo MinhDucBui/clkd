@@ -1,4 +1,4 @@
-_target_: src.models.general_distillation.GeneralDistillation
+_target_: src.models.base_kd.GeneralDistillation
 temperature: 1.0
 loss: "loss_fn_kd"
 total_steps: 2

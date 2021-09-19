@@ -3,7 +3,7 @@
 # specify here default training configuration
 defaults:
   - trainer: default.yaml
-  - model: general_distillation.yaml
+  - model: base_kd.yaml
   - model/teacher: teacher_model.yaml
   - model/student: student_model.yaml
   - datamodule: cc100.yaml

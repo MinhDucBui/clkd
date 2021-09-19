@@ -25,11 +25,8 @@ class GeneralDistillation(OptimizerMixin, LightningModule):
 
         self.loss_function = getattr(loss_functions, self.hparams.loss)
 
-        self.pool_fn = getattr(pooling, self.hparams.pool_fn)
-
         self.val_mse = torchmetrics.MeanSquaredError()
         self.test_mse = torchmetrics.MeanSquaredError()
-
 
     def forward(self, batch: dict) -> torch.Tensor:
         """Used for inference only.
