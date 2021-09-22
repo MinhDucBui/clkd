@@ -4,31 +4,6 @@ import torch
 from .modules.get_model_architecture import get_student_model_architecture
 from .modules import pooling
 from .modules.optimizer import OptimizerMixin
-from transformers import (
-    AdamW,
-    BertConfig,
-    BertForMaskedLM,
-    BertTokenizer,
-    CamembertConfig,
-    CamembertForMaskedLM,
-    CamembertTokenizer,
-    DistilBertConfig,
-    DistilBertForMaskedLM,
-    DistilBertTokenizer,
-    PreTrainedTokenizer,
-    RobertaConfig,
-    RobertaForMaskedLM,
-    RobertaTokenizer,
-)
-
-
-MODEL_CLASSES = {
-    "bert": (BertConfig, BertForMaskedLM, BertTokenizer),
-    "roberta": (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer),
-    "distilbert": (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
-    "camembert": (CamembertConfig, CamembertForMaskedLM, CamembertTokenizer),
-}
-
 
 
 class StudentModel(OptimizerMixin, LightningModule):

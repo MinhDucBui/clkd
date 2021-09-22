@@ -13,7 +13,7 @@ class OptimizerMixin(LightningModule):
 
     def configure_optimizers(self):
         "Prepare optimizer and schedule (linear warmup and decay)"
-        param_optimizer = list(self.student.named_parameters())
+        param_optimizer = list(self.model.named_parameters())
         no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {

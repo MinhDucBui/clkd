@@ -2,6 +2,8 @@
 
 # specify here default training configuration
 defaults:
+
+  # Knowledge Distillation
   - trainer: default.yaml
   - model: base_kd.yaml
   - model/teacher: teacher_model.yaml
@@ -11,13 +13,16 @@ defaults:
   - logger: null # set logger here or use command line (e.g. `python run.py logger=wandb`)
   - experiment: null
   - hparams_search: null
-
   - hydra: default.yaml
 
   # enable color logging
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
+# Specify the Languages to distill. Full list of languages: http://data.statmt.org/cc-100/
+languages: ["eu", "gn"]
+
+# Random Seed
 seed: 42
 
 # path to original working directory
@@ -28,6 +33,9 @@ work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
 data_dir: ${work_dir}/data/
+
+# Path to CC100 Folder for MLM pretraining
+cc: ${data_dir}/cc100
 
 # use `python run.py debug=true` for easy debugging!
 # this will run 1 train, val and test loop with only 1 batch
@@ -43,4 +51,4 @@ ignore_warnings: True
 
 # check performance on test set, using the best model achieved during training
 # lightning chooses best model based on metric specified in checkpoint callback
-test_after_training: True
+test_on_downstream_task: True

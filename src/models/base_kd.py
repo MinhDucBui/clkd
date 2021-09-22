@@ -22,6 +22,7 @@ class GeneralDistillation(OptimizerMixin, LightningModule):
         self.save_hyperparameters()
         self.teacher = self.hparams.teacher
         self.student = self.hparams.student
+        self.model = self.hparams.student
 
         self.loss_function = getattr(loss_functions, self.hparams.loss)
 
@@ -52,7 +53,7 @@ class GeneralDistillation(OptimizerMixin, LightningModule):
         """
 
         # Calculate Student Outputs
-        student_outputs = self.student(batch)  # (bs, seq_length, voc_size)
+        student_outputs = self.model(batch)  # (bs, seq_length, voc_size)
 
         # Calculate Teacher Outputs (don't need gradient)
         with torch.no_grad():
@@ -78,7 +79,7 @@ class GeneralDistillation(OptimizerMixin, LightningModule):
     def validation_step(self, batch, batch_idx):
 
         # Calculate Student Outputs
-        student_outputs = self.student(batch)  # (bs, seq_length, voc_size)
+        student_outputs = self.model(batch)  # (bs, seq_length, voc_size)
 
         # Calculate Teacher Outputs (don't need gradient)
         with torch.no_grad():
@@ -105,7 +106,7 @@ class GeneralDistillation(OptimizerMixin, LightningModule):
 
     def test_step(self, batch, batch_idx):
         # Calculate Student Outputs
-        student_outputs = self.student(batch)  # (bs, seq_length, voc_size)
+        student_outputs = self.model(batch)  # (bs, seq_length, voc_size)
 
         # Calculate Teacher Outputs (don't need gradient)
         with torch.no_grad():

@@ -2,26 +2,6 @@ from pytorch_lightning import LightningModule
 from .modules.get_model_architecture import get_teacher_model_architecture
 import torch
 from .modules import pooling
-from transformers import (
-    AdamW,
-    BertConfig,
-    BertForMaskedLM,
-    BertTokenizer,
-    DistilBertConfig,
-    DistilBertForMaskedLM,
-    DistilBertTokenizer,
-    PreTrainedTokenizer,
-    RobertaConfig,
-    RobertaForMaskedLM,
-    RobertaTokenizer,
-)
-
-
-MODEL_CLASSES = {
-    "bert": (BertConfig, BertForMaskedLM, BertTokenizer),
-    "roberta": (RobertaConfig, RobertaForMaskedLM, RobertaTokenizer),
-    "distilbert": (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer),
-}
 
 class TeacherModel(LightningModule):
     def __init__(
@@ -35,7 +15,6 @@ class TeacherModel(LightningModule):
         self.save_hyperparameters()
 
         # instantiate random model
-        _, model_class, _ = MODEL_CLASSES[self.hparams.teacher_model_type]
         self.model = get_teacher_model_architecture(self.hparams)
 
         self.pool_fn = getattr(pooling, self.hparams.pool_fn)

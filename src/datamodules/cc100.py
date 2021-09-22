@@ -6,14 +6,17 @@ from torch.utils.data.dataset import Dataset
 from transformers import AutoTokenizer, PreTrainedTokenizer, DataCollatorForLanguageModeling
 from pathlib import Path
 from src.models.modules.get_model_architecture import get_tokenizer
+import os.path
+import sys
 
 
 class CC100DataModule(LightningDataModule):
     def __init__(
             self,
             teacher_model_type: str,
+            languages: list,
             batch_size: int = 8,
-            data_dir: str = "./data/eu.txt/",
+            data_dir: str = "./data/cc100/",
             max_length: int = 100,
             num_workers: int = 8,
             pin_memory: bool = True,
@@ -28,16 +31,44 @@ class CC100DataModule(LightningDataModule):
         self.pin_memory = pin_memory
         self.tokenizer = get_tokenizer(self.hparams)
 
+        self.languages = languages
+        self.paths_to_files = []
+        self.construct_path_to_files()
+
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
 
-        train_data = self.load_dataset_iterable(
-            self.data_dir
-        )
+        train_data = self.load_dataset_iterable()
 
         self.data_train = train_data
         self.collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=True, mlm_probability=0.15)
+
+    def construct_path_to_files(self):
+        """Check and Construct Paths to languages.
+
+        Returns:
+
+        """
+
+        # We assume that file is a txt file
+        file_type = ".txt"
+
+        for single_language in self.languages:
+
+            # Construct path to language
+            file_path = os.path.join(self.data_dir, single_language + file_type)
+
+            # Check if file exists
+            if not os.path.isfile(file_path):
+                sys.exit("Path {} does not exist! Please download and extract missing file.".format(file_path))
+
+            self.paths_to_files.append(file_path)
+
+        # Check if any files were added or not
+        if not self.paths_to_files:
+            sys.exit("No files were specified. Please check the variable languages and data_dir in cc100 datamodule.")
+
 
     @property
     def num_labels(self) -> int:
@@ -46,8 +77,9 @@ class CC100DataModule(LightningDataModule):
     #def __len__(self):
     #    return len(self.data_train) if self.data_train is not None else 0
 
-    def load_dataset_iterable(self, data_dir):
-        dataset = load_dataset('text', data_files={'train': [data_dir]}, split='train', streaming=True)
+    # TODO: Move to Collator
+    def load_dataset_iterable(self):
+        dataset = load_dataset('text', data_files={'train': self.paths_to_files}, split='train', streaming=True)
 
         # https://github.com/huggingface/datasets/issues/2583
         dataset = dataset.with_format("torch")
