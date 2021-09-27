@@ -1,5 +1,9 @@
-defaults:
-  - model_architecture
-
 _target_: src.models.student.StudentModel
+
+# Model Architecture
 pool_fn: "cls"
+student_model_type: "distilbert"
+student_model_name_or_path: 'distilbert-base-uncased'
+
+# ToDo: Have flag if to use pretrained weights
+#pretrained_weights: False
