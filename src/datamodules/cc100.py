@@ -8,6 +8,10 @@ from pathlib import Path
 from src.models.modules.get_model_architecture import get_tokenizer
 import os.path
 import sys
+import requests
+from src.utils import utils
+import lzma, shutil
+log = utils.get_logger(__name__)
 
 
 class CC100DataModule(LightningDataModule):
@@ -33,7 +37,7 @@ class CC100DataModule(LightningDataModule):
 
         self.languages = languages
         self.paths_to_files = []
-        self.construct_path_to_files()
+        self.prepare_data()
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
@@ -43,32 +47,6 @@ class CC100DataModule(LightningDataModule):
 
         self.data_train = train_data
         self.collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=True, mlm_probability=0.15)
-
-    def construct_path_to_files(self):
-        """Check and Construct Paths to languages.
-
-        Returns:
-
-        """
-
-        # We assume that file is a txt file
-        file_type = ".txt"
-
-        for single_language in self.languages:
-
-            # Construct path to language
-            file_path = os.path.join(self.data_dir, single_language + file_type)
-
-            # Check if file exists
-            if not os.path.isfile(file_path):
-                sys.exit("Path {} does not exist! Please download and extract missing file.".format(file_path))
-
-            self.paths_to_files.append(file_path)
-
-        # Check if any files were added or not
-        if not self.paths_to_files:
-            sys.exit("No files were specified. Please check the variable languages and data_dir in cc100 datamodule.")
-
 
     @property
     def num_labels(self) -> int:
@@ -99,7 +77,24 @@ class CC100DataModule(LightningDataModule):
 
         """
 
-        return None
+        # We assume that file is a txt or txt.xz file
+        file_type = ".txt"
+        file_type_compressed = ".txt.xz"
+
+        for single_language in self.languages:
+
+            # Construct path to language
+            file_path_txt = os.path.join(self.data_dir, single_language + file_type)
+            file_path_compressed = os.path.join(self.data_dir, single_language + file_type_compressed)
+
+            # Check if file exists
+            if not os.path.isfile(file_path_txt):
+                if not os.path.isfile(file_path_compressed):
+                    log.info("No txt or txt.xz file for {} exist! Proceed to download file...".format(single_language))
+                    self.download_file(single_language, self.data_dir)
+                self.decompress_xy(file_path_compressed)
+            self.paths_to_files.append(file_path_txt)
+
 
     def setup(self, stage: Optional[str] = None):
         """There are also data operations you might want to perform on every GPU. Use setup to do things like:
@@ -142,3 +137,37 @@ class CC100DataModule(LightningDataModule):
             pin_memory=self.pin_memory,
             collate_fn=self.collator
         )
+
+    def download_file(self, language, output_folder):
+
+        file_name = '{language}.txt.xz'.format(language=language)
+        link = 'http://data.statmt.org/cc-100/' + file_name
+        output_file = os.path.join(output_folder, file_name)
+        print("\n")
+        with open(output_file, "wb") as f:
+            log.info("Downloading %s" % file_name)
+            response = requests.get(link, stream=True)
+            total_length = response.headers.get('content-length')
+
+            if total_length is None:  # no content length header
+                f.write(response.content)
+            else:
+                dl = 0
+                total_length = int(total_length)
+                chunk_size = int(total_length / 100)
+                for data in response.iter_content(chunk_size):
+                    dl += len(data)
+                    f.write(data)
+                    done = int(50 * dl / total_length)
+                    sys.stdout.write("\r[%s%s] %s%%" % ('=' * done, ' ' * (50 - done), done * 2))
+                    sys.stdout.flush()
+        print("\n")
+
+    def decompress_xy(self, input_file):
+        log.info("Decompress %s" % input_file)
+        input_file = Path(input_file)
+        destination_dir = os.path.dirname(input_file)
+        with lzma.open(input_file) as compressed:
+            output_path = Path(destination_dir) / input_file.stem
+            with open(output_path, 'wb') as destination:
+                shutil.copyfileobj(compressed, destination)
