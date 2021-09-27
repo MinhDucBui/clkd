@@ -1,7 +1,0 @@
-defaults:
-  - xlm-roberta-base
-
-_target_: src.models.classifier.SeqClassifier
-pool_fn: "cls"
-max_epochs: ${trainer.max_epochs}
-num_labels: ${datamodule.num_labels}

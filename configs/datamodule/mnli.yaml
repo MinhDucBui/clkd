@@ -1,6 +1,6 @@
 _target_: src.datamodules.mnli.MNLIDataModule
 
-model_name_or_path: ${model.model_name_or_path}
+model_name_or_path: ${model.teacher.teacher_model_name_or_path}
 data_dir: ${data_dir}/multinli_1.0
 batch_size: 64
 num_labels: 3
