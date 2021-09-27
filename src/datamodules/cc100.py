@@ -92,7 +92,7 @@ class CC100DataModule(LightningDataModule):
                 if not os.path.isfile(file_path_compressed):
                     log.info("No txt or txt.xz file for {} exist! Proceed to download file...".format(single_language))
                     self.download_file(single_language, self.data_dir)
-                self.decompress_xy(file_path_compressed)
+                self.decompress_xz(file_path_compressed)
             self.paths_to_files.append(file_path_txt)
 
 
@@ -163,7 +163,7 @@ class CC100DataModule(LightningDataModule):
                     sys.stdout.flush()
         print("\n")
 
-    def decompress_xy(self, input_file):
+    def decompress_xz(self, input_file):
         log.info("Decompress %s" % input_file)
         input_file = Path(input_file)
         destination_dir = os.path.dirname(input_file)
