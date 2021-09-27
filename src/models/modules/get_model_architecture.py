@@ -10,6 +10,8 @@ from transformers import (
     RobertaForMaskedLM,
     RobertaTokenizer,
 )
+from src.utils import utils
+log = utils.get_logger(__name__)
 
 
 MODEL_CLASSES = {
@@ -20,7 +22,7 @@ MODEL_CLASSES = {
 
 
 def get_student_model_architecture(hparams):
-    print("Initialize Student")
+    log.info("Initialize Student")
     # instantiate random model
     config_class, model_class, _ = MODEL_CLASSES[hparams.student_model_type]
     config = config_class.from_pretrained(hparams.student_model_name_or_path)
@@ -31,7 +33,7 @@ def get_student_model_architecture(hparams):
 
 def get_teacher_model_architecture(hparams):
     # instantiate pretrained model
-    print("Initialize Teacher")
+    log.info("Initialize Teacher")
     _, model_class, _ = MODEL_CLASSES[hparams.teacher_model_type]
     model = model_class.from_pretrained(hparams.teacher_model_name_or_path, output_hidden_states=True)
 
