@@ -33,20 +33,15 @@ class CC100DataModule(LightningDataModule):
         self.num_workers = num_workers
         self.max_length = max_length
         self.pin_memory = pin_memory
-        self.tokenizer = get_tokenizer(self.hparams)
-
         self.languages = languages
-        self.paths_to_files = []
-        self.prepare_data()
+
+        self.tokenizer = get_tokenizer(self.hparams)
+        self.collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=True, mlm_probability=0.15)
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
 
-        train_data = self.load_dataset_iterable()
-
-        self.data_train = train_data
-        self.collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=True, mlm_probability=0.15)
 
     @property
     def num_labels(self) -> int:
@@ -56,8 +51,8 @@ class CC100DataModule(LightningDataModule):
     #    return len(self.data_train) if self.data_train is not None else 0
 
     # TODO: Move to Collator
-    def load_dataset_iterable(self):
-        dataset = load_dataset('text', data_files={'train': self.paths_to_files}, split='train', streaming=True)
+    def load_dataset_iterable(self, paths_to_files):
+        dataset = load_dataset('text', data_files={'train': paths_to_files}, split='train', streaming=True)
 
         # https://github.com/huggingface/datasets/issues/2583
         dataset = dataset.with_format("torch")
@@ -65,7 +60,7 @@ class CC100DataModule(LightningDataModule):
         # Shuffle Dataset
         dataset = dataset.shuffle(buffer_size=10000, seed=42)
 
-        # Tokenize Dataset
+        # TODO: Tokenization should happen in Collator
         tokenized_dataset = dataset.map(lambda x: self.tokenizer(x["text"]))
 
         return tokenized_dataset
@@ -81,6 +76,10 @@ class CC100DataModule(LightningDataModule):
         file_type = ".txt"
         file_type_compressed = ".txt.xz"
 
+        # Save the paths to the data
+        paths_to_files = []
+
+        # Loop through the languages
         for single_language in self.languages:
 
             # Construct path to language
@@ -93,7 +92,9 @@ class CC100DataModule(LightningDataModule):
                     log.info("No txt or txt.xz file for {} exist! Proceed to download file...".format(single_language))
                     self.download_file(single_language, self.data_dir)
                 self.decompress_xz(file_path_compressed)
-            self.paths_to_files.append(file_path_txt)
+            paths_to_files.append(file_path_txt)
+
+        self.data_train = self.load_dataset_iterable(paths_to_files)
 
 
     def setup(self, stage: Optional[str] = None):
@@ -117,7 +118,6 @@ class CC100DataModule(LightningDataModule):
 
     # TODO: Change Val and test dataloader to a unseen dataset
     def val_dataloader(self):
-        self.data_train = self.data_train.with_format("torch")
         dataloader = DataLoader(
             dataset=self.data_train,
             sampler=None,
