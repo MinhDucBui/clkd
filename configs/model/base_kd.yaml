@@ -1,9 +1,0 @@
-_target_: src.models.base_kd.GeneralDistillation
-temperature: 1.0
-loss: "loss_fn_kd"
-total_steps: ${trainer.max_steps}
-warmup_steps: 0.1
-weight_decay: 0.01
-lr: 0.00002
-lr_linear_decay: True
-alpha: 0.5

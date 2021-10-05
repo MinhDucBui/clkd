@@ -1,0 +1,4 @@
+_target_: transformers.optimization.AdamW
+
+weight_decay: 0.01
+lr: ${train.lr}

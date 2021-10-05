@@ -1,0 +1,6 @@
+# @package _global_
+distillation_type: multilingual
+
+distillation:
+  _target_: src.distillation.multilingual.Multilingual
+
