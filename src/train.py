@@ -10,9 +10,7 @@ from pytorch_lightning import (
     seed_everything,
 )
 from pytorch_lightning.loggers import LightningLoggerBase
-
 from src.utils import utils
-from src.utils.utils import create_language_mapping
 
 log = utils.get_logger(__name__)
 
@@ -32,20 +30,13 @@ def train(config: DictConfig) -> Optional[float]:
     if "seed" in config:
         seed_everything(config.seed, workers=True)
 
-    # Create Language Mapping
-    language_mapping = create_language_mapping(config.distillation_type, config.s_lang, config.t_lang)
-
-    # Init lightning datamodule
-    log.info(f"Instantiating datamodule <{config.datamodule._target_}>")
-    datamodule = hydra.utils.instantiate(config.datamodule, language_mapping=language_mapping)
-
     # Init Distillation
     log.info(f"Instantiating Distillation <{config.distillation._target_}>")
     distillation: LightningModule = hydra.utils.instantiate(config.distillation,
                                                             train_cfg=config.train,
                                                             teacher_cfg=config.teacher,
                                                             student_cfg=config.student,
-                                                            language_mapping=language_mapping)
+                                                            data_cfg=config.datamodule)
 
     # Init lightning callbacks
     callbacks: List[Callback] = []
@@ -82,7 +73,7 @@ def train(config: DictConfig) -> Optional[float]:
 
     # Train the model
     log.info("Starting training!")
-    trainer.fit(model=distillation, datamodule=datamodule)
+    trainer.fit(model=distillation, datamodule=distillation.datamodule)
 
     # Evaluate model on test set, using the best model achieved during training
     if config.get("test_after_training") and not config.train-trainer.get("fast_dev_run"):
@@ -94,7 +85,7 @@ def train(config: DictConfig) -> Optional[float]:
     utils.finish(
         config=config,
         model=distillation,
-        datamodule=datamodule,
+        datamodule=distillation.datamodule,
         trainer=trainer,
         callbacks=callbacks,
         logger=logger,

@@ -1,9 +1,8 @@
 import logging
-import os
 import sys
 import warnings
 from typing import List, Sequence
-
+import torch
 import pytorch_lightning as pl
 import rich.syntax
 import rich.tree
@@ -11,12 +10,12 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.utilities import rank_zero_only
 
 
-def get_subset_from_batch(batch, idx):
-    new_batch = {}
-    for key, value in batch.items():
-        new_batch[key] = value[idx]
+def get_subset_dict(full_set: dict, idx: torch.Tensor):
+    subset = {}
+    for key, value in full_set.items():
+        subset[key] = value[idx]
 
-    return new_batch
+    return subset
 
 
 def get_languages_from_mapping(language_mapping):
@@ -26,58 +25,9 @@ def get_languages_from_mapping(language_mapping):
         single_language.split("_")
 
 
-def create_language_mapping(distillation_type, s_lang, t_lang):
-    """Create a mapping from language to a unique index. Furthermore, each source language has an additional index=0,
-    and each target language has an additional index=1. E.g. "english": [0, 0] <-> english has (unique) index 0 and is
-    a source language.
-
-    Args:
-        s_lang ():
-        t_lang ():
-
-    Returns:
-
-    """
-    mapping = {"lang_id": None, "id_lang": None}
-    if distillation_type == "monolingual":
-        mapping = monolingual_mapping(s_lang, t_lang)
-    elif distillation_type == "bilingual":
-        mapping = bilingual_mapping(s_lang, t_lang)
-
-    return mapping
-
-
-def bilingual_mapping(s_lang, t_lang):
-    mapping = monolingual_mapping(s_lang, t_lang)
-    index = 0
-    if isinstance(t_lang, str):
-        mapping["id_model"], _ = bilingual_parse_mapping_language(s_lang, t_lang, index=index)
-    elif isinstance(t_lang, bool):
-        sys.exit("No Target Language is given.")
-    else:
-        for single_target_language in t_lang:
-            mapping["id_model"], index = bilingual_parse_mapping_language(s_lang, single_target_language, index=index)
-
-    mapping_lang_id = {v[0]: [k] for k, v in mapping["id_model"].items()}
-    mapping["model_id"] = mapping_lang_id
-    return mapping
-
-
-def monolingual_mapping(s_lang, t_lang):
-    mapping = {}
-    s_mapping_id_lang, s_index = monolingual_parse_mapping_language(s_lang, prefix=0, index=0)
-    t_mapping_id_lang, _ = monolingual_parse_mapping_language(t_lang, prefix=1, index=s_index)
-    s_mapping_id_lang.update(t_mapping_id_lang)
-    mapping["id_lang"] = s_mapping_id_lang
-    mapping_lang_id = {v[0]: [k, v[1]] for k, v in mapping["id_lang"].items()}
-    mapping["lang_id"] = mapping_lang_id
-    mapping["model_id"] = mapping["lang_id"]
-    mapping["id_lang"] = mapping["id_lang"]
-    return mapping
-
-
 def bilingual_parse_mapping_language(s_lang, language, index: int):
     mapping_id_lang = {}
+
     if not index:
         index = 0
     if isinstance(s_lang, str):
@@ -92,7 +42,7 @@ def bilingual_parse_mapping_language(s_lang, language, index: int):
     return mapping_id_lang, index
 
 
-def monolingual_parse_mapping_language(language, prefix: int, index: int):
+def monolingual_parse_mapping_language(language, prefix: str, index: int):
     mapping_id_lang = {}
     if not index:
         index = 0

@@ -24,7 +24,7 @@ def add_language_tag(dataset, language):
 
 
 def add_language_tag_tokenizer(x, tokenizer, language_mapping):
-    language_tag = language_mapping["lang_id"][x["language"]]
+    language_tag = [language_mapping["lang_id"][x["language"]][0]]
     x = dict(tokenizer(x["text"]))
     return dict(x, **{"language": language_tag})
 
@@ -105,6 +105,7 @@ class CC100DataModule(LightningDataModule):
         for single_language in self.languages:
             if single_language == "False":
                 continue
+
             # Construct path to language
             file_path_txt = os.path.join(self.data_dir, single_language + file_type)
             file_path_compressed = os.path.join(self.data_dir, single_language + file_type_compressed)

@@ -21,8 +21,8 @@ defaults:
   - datamodule: cc100.yaml
 
   # Utils
-  - callbacks: default.yaml # set this to null if you don't want to use callbacks
-  - logger: null # set logger here or use command line (e.g. `python run.py logger=wandb`)
+  - callbacks: none.yaml # set this to null if you don't want to use callbacks
+  - logger: tensorboard # set logger here or use command line (e.g. `python run.py logger=wandb`)
   - experiment: null
   - hydra: default.yaml
 
@@ -30,8 +30,13 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
-s_lang: ["eu"]
-t_lang: ["gn"]
+distillation: bilingual
+
+train:
+  batch_size: 3
+  total_steps: 20
+  trainer:
+    log_every_n_steps: 1
 
 student:
   use_pretrained_weights: false

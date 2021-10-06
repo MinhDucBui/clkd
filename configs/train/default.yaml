@@ -7,7 +7,7 @@ lr: 0.0002
 output_dir: '.'
 
 # read in dataset
-batch_size: 2
+batch_size: 12
 num_workers: 0
 
 metric:
