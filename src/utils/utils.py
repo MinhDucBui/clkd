@@ -10,6 +10,18 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.utilities import rank_zero_only
 
 
+def get_language_subset_index(language_mapping, batch_language, model_languages):
+    idx = None
+    for index, single_language in enumerate(model_languages):
+        language_id = language_mapping["lang_id"][single_language][0]
+        subset_index = (batch_language == torch.tensor(language_id)).nonzero()[:, 0]
+        if index == 0:
+            idx = subset_index
+        else:
+            idx = torch.cat((idx, subset_index), 0)
+    return idx
+
+
 def get_subset_dict(full_set: dict, idx: torch.Tensor):
     subset = {}
     for key, value in full_set.items():
