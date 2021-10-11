@@ -1,7 +1,7 @@
 _target_: src.models.model.get_bert
 
-pretrained_model_name_or_path: "bert-base-uncased"
-use_pretrained_weights: true
+pretrained_model_name_or_path: false
+use_pretrained_weights: false
 cfg:
   # Architecture (Default BERT architecture):
   vocab_size: 30522

@@ -4,9 +4,8 @@ import torch
 from omegaconf import DictConfig
 from src.utils import utils
 import hydra
-from collections import OrderedDict
 from src.utils.utils import get_subset_dict
-#log = utils.get_logger(__name__)
+log = utils.get_logger(__name__)
 
 
 class BaseLingual(OptimizerMixin, pl.LightningModule):
@@ -20,53 +19,70 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
             **kwargs,
     ):
 
-        super().__init__()
-
         self.train_cfg = train_cfg
         self.teacher_cfg = teacher_cfg
         self.student_cfg = student_cfg
         self.data_cfg = data_cfg
 
+        # language_mapping is being initialized in mono/bi/multilingual class
+        self.number_of_models = len(self.language_mapping["model_id"])
+        self.languages = self.language_mapping["id_model"]
+        self.model = [hydra.utils.instantiate(self.student_cfg) for i in range(self.number_of_models)]
+
+        super().__init__()
+
         # Init Data Module
-        #log.info(f"Instantiating datamodule <{self.data_cfg._target_}>")
+        log.info(f"Instantiating datamodule <{self.data_cfg._target_}>")
         self.datamodule = hydra.utils.instantiate(self.data_cfg, language_mapping=self.language_mapping)
 
         # Init Teacher Model
-        #log.info(f"Instantiating Teacher model <{self.teacher_cfg._target_}>")
+        log.info(f"Instantiating Teacher model <{self.teacher_cfg._target_}>")
         self._teacher = hydra.utils.instantiate(self.teacher_cfg)
         self._teacher.eval()
         self.teacher_outputs = None
 
-        # Initialize Student Models
-        self.number_of_models = len(self.language_mapping["model_id"])
-        self.model = [hydra.utils.instantiate(self.student_cfg) for i in range(self.number_of_models)]
-
         # TODO: Init Metric
         # self.metric = hydra.utils.instantiate(train_cfg.metric)
+        print(id(self.model[1].parameters()))
 
         # Init Loss
         self.loss = hydra.utils.instantiate(train_cfg.loss)
 
-    def training_step(self, batch, batch_idx, optimizer_idx=0, prefix="train"):
+    def training_step(self, batch, batch_idx, optimizer_idx=0):
+        return self.common_step(model_idx=optimizer_idx, batch=batch, prefix="train")
+
+    def validation_step(self, batch, batch_idx):
+        all_output = {}
+        for model_idx in range(self.number_of_models):
+            model_language = self.languages[model_idx][0].split("_")
+            output = self.common_step(model_idx=model_idx, batch=batch, prefix="val")
+            for key, value in output.items():
+                output[key + "_" + "_".join(model_language)] = output.pop(key)
+            all_output.update(output)
+        return all_output
+
+    def common_step(self, model_idx: int, batch: dict, prefix: str):
+
         batch_language = batch["language"]
         labels = batch["labels"]
-        print(optimizer_idx)
         cleaned_batch = {key: value for key, value in batch.items() if key not in ["language", "labels"]}
-        if optimizer_idx == 0:
+        # https://github.com/huggingface/transformers/issues/2702
+        cleaned_batch = {key: value for (key, value) in cleaned_batch.items() if
+                         key in self.model[model_idx].forward.__code__.co_varnames}
+        if model_idx == 0:
             # Calculate Teacher Outputs (don't need gradient)
             with torch.no_grad():
                 self.teacher_outputs = self._teacher.forward(**cleaned_batch)  # (bs, seq_length, voc_size)
 
         # Get corresponding languages
-        languages = self.language_mapping["id_model"][optimizer_idx][0]
-        languages = languages.split("_")
+        model_languages = self.language_mapping["id_model"][model_idx][0].split("_")
 
         # Get row index of the corresponding samples in the batch
-        idx = self.get_language_subset_index(batch_language, languages)
+        idx = self.get_language_subset_index(batch_language, model_languages)
 
         # Get corresponding Student Number
-        student_model = self.model[optimizer_idx]
-
+        # for name, param in self.model[model_idx].state_dict().items():
+        #    print(name, param)
         # Get corresponding Batch
         subset_batch = get_subset_dict(cleaned_batch, idx)
         subset_labels = labels[idx]
@@ -75,10 +91,10 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         subset_teacher_output = get_subset_dict(self.teacher_outputs, idx)
 
         # Get Loss
-        student_outputs = student_model(**subset_batch)  # (bs, seq_length, voc_size)
+        student_outputs = self.model[model_idx](**subset_batch)  # (bs, seq_length, voc_size)
         loss = self.loss(student_outputs, subset_teacher_output, subset_labels)
 
-        tqdm_dict = {"_".join(languages) + '_loss': loss}
+        tqdm_dict = {"_".join(model_languages) + '_loss': loss}
 
         output = {
             'loss': loss,
@@ -86,13 +102,13 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
             'log': tqdm_dict
         }
 
-        self.log("_".join(languages) + "_" + prefix + '_loss', loss)
+        self.log("_".join(model_languages) + "_" + prefix + '_loss', loss)
 
         return output
 
-    def get_language_subset_index(self, batch_language, languages):
+    def get_language_subset_index(self, batch_language, model_languages):
         idx = None
-        for index, single_language in enumerate(languages):
+        for index, single_language in enumerate(model_languages):
             language_id = self.language_mapping["lang_id"][single_language][0]
             subset_index = (batch_language == torch.tensor(language_id)).nonzero()[:, 0]
             if index == 0:
@@ -101,26 +117,7 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
                 idx = torch.cat((idx, subset_index), 0)
         return idx
 
-    """
-    def common_step(self, student_model, batch: dict, batch_idx: int, prefix: str):
-        # Prepare Batch
-        language = batch["language"]
-        labels = batch["labels"]
-        batch = {key: value for key, value in batch.items() if key not in ["language", "labels"]}
-
-        # Calculate Student Outputs
-        student_outputs = self.student_model(batch, language)  # (bs, seq_length, voc_size)
-
-        loss = self.loss(student_outputs, self.teacher_outputs, labels)
-
-        # TODO: Add Metric Option
-        # self.metric = self.metric(student_outputs["logits"], labels)
-        # self.metric = {f'{prefix}_{k}': v for k, v in self.metric.items()}
-
-        self.log(f'{prefix}_loss', loss)
-
-        return loss
-    
+    """    
     def validation_step(self, batch, batch_idx):
         return self.common_step(batch, batch_idx, prefix='val')
 

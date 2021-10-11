@@ -5,3 +5,6 @@ distillation:
   _recursive_: false
   _target_: src.distillation.bilingual.Bilingual
 
+  s_lang: [ "ha" ]
+  t_lang: [ "eu", "gn" ]
+

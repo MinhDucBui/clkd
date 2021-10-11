@@ -5,9 +5,7 @@ from transformers import (
     BertConfig,
     BertForMaskedLM,
     DistilBertConfig,
-    DistilBertForMaskedLM,
-    RobertaConfig,
-    RobertaForMaskedLM,
+    DistilBertForMaskedLM
 )
 
 
@@ -24,7 +22,7 @@ def get_bert(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
         return BertForMaskedLM.from_pretrained(pretrained_model_name_or_path)
     elif not use_pretrained_weights and pretrained_model_name_or_path:
         architecture_cfg = BertConfig.from_pretrained(pretrained_model_name_or_path)
-        return BertForMaskedLM.from_config(architecture_cfg)
+        return BertForMaskedLM(architecture_cfg)
     else:
         architecture_config = BertConfig(**cfg)
         return BertForMaskedLM(architecture_config)
