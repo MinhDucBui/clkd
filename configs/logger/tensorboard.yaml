@@ -5,6 +5,6 @@ tensorboard:
   save_dir: "tensorboard/"
   name: "default"
   version: null
-  log_graph: False
-  default_hp_metric: True
+  log_graph: True
+  default_hp_metric: false
   prefix: ""

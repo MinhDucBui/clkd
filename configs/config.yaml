@@ -3,24 +3,46 @@
 # specify here default training configuration
 defaults:
 
-  # Knowledge Distillation
-  - trainer: default.yaml
-  - model: base_kd.yaml
-  - model/teacher: teacher_model.yaml
-  - model/student: student_model.yaml
+  # Training Setup
+  - train: default.yaml
+  - train/trainer: default.yaml
+  - train/optimizer: adamw.yaml
+  - train/lr_scheduler: linear_warmup.yaml
+  - train/loss: kdloss.yaml
+
+    # Distillation Setup
+  - distillation: bilingual.yaml
+
+  # Teacher and Student Model
+  - model@teacher: automodel.yaml
+  - model@student: automodel.yaml
+
+  # Define Datamodule
   - datamodule: cc100.yaml
-  - callbacks: default.yaml # set this to null if you don't want to use callbacks
-  - logger: null # set logger here or use command line (e.g. `python run.py logger=wandb`)
+
+  # Utils
+  - callbacks: none.yaml # set this to null if you don't want to use callbacks
+  - logger: tensorboard # set logger here or use command line (e.g. `python run.py logger=wandb`)
   - experiment: null
-  - hparams_search: null
   - hydra: default.yaml
 
   # enable color logging
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
-# Specify the Languages to distill. Full list of languages: http://data.statmt.org/cc-100/
-languages: ["eu", "gn"]
+distillation:
+  s_lang: ["ha"]
+  t_lang: ["eu", "gn"]
+
+train:
+  batch_size: 2
+  total_steps: 20
+  trainer:
+    log_every_n_steps: 1
+    track_grad_norm: 2
+
+student:
+  use_pretrained_weights: false
 
 # Random Seed
 seed: 42

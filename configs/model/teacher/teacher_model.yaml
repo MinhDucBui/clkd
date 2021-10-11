@@ -1,6 +1,0 @@
-_target_: src.models.teacher.TeacherModel
-
-# Model Architecture
-teacher_model_type: "distilbert"
-teacher_model_name_or_path: 'distilbert-base-uncased'
-pool_fn: "cls"

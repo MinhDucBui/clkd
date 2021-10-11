@@ -1,13 +1,61 @@
 import logging
-import os
+import sys
 import warnings
 from typing import List, Sequence
-
+import torch
 import pytorch_lightning as pl
 import rich.syntax
 import rich.tree
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.utilities import rank_zero_only
+
+
+def get_subset_dict(full_set: dict, idx: torch.Tensor):
+    subset = {}
+    for key, value in full_set.items():
+        subset[key] = value[idx]
+
+    return subset
+
+
+def get_languages_from_mapping(language_mapping):
+    languages = []
+    potential_languages = list(language_mapping["lang_id"].keys())
+    for single_language in potential_languages:
+        single_language.split("_")
+
+
+def bilingual_parse_mapping_language(s_lang, language, index: int):
+    mapping_id_lang = {}
+
+    if not index:
+        index = 0
+    if isinstance(s_lang, str):
+        mapping_id_lang[index] = [s_lang + "_" + language]
+    elif isinstance(s_lang, bool):
+        pass
+    else:
+        for single_language in s_lang:
+            mapping_id_lang[index] = [single_language + "_" + language]
+            index += 1
+
+    return mapping_id_lang, index
+
+
+def monolingual_parse_mapping_language(language, prefix: str, index: int):
+    mapping_id_lang = {}
+    if not index:
+        index = 0
+    if isinstance(language, str):
+        mapping_id_lang[index] = [language, prefix]
+    elif isinstance(language, bool):
+        pass
+    else:
+        for single_language in language:
+            mapping_id_lang[index] = [single_language, prefix]
+            index += 1
+
+    return mapping_id_lang, index
 
 
 def get_logger(name=__name__, level=logging.INFO) -> logging.Logger:
@@ -52,10 +100,10 @@ def extras(config: DictConfig) -> None:
         config.trainer.fast_dev_run = True
 
     # force debugger friendly configuration if <config.trainer.fast_dev_run=True>
-    if config.trainer.get("fast_dev_run"):
+    if config.train.trainer.get("fast_dev_run"):
         log.info("Forcing debugger friendly configuration! <config.trainer.fast_dev_run=True>")
         # Debuggers don't like GPUs or multiprocessing
-        if config.trainer.get("gpus"):
+        if config.train.trainer.get("gpus"):
             config.trainer.gpus = 0
         if config.datamodule.get("pin_memory"):
             config.datamodule.pin_memory = False
@@ -68,16 +116,18 @@ def extras(config: DictConfig) -> None:
 
 @rank_zero_only
 def print_config(
-    config: DictConfig,
-    fields: Sequence[str] = (
-        "trainer",
-        "model",
-        "datamodule",
-        "callbacks",
-        "logger",
-        "seed",
-    ),
-    resolve: bool = True,
+        config: DictConfig,
+        fields: Sequence[str] = (
+                "train",
+                "distillation",
+                "teacher",
+                "student",
+                "datamodule",
+                "callbacks",
+                "logger",
+                "seed",
+        ),
+        resolve: bool = True,
 ) -> None:
     """Prints content of DictConfig using Rich library and its tree structure.
 
@@ -113,12 +163,12 @@ def empty(*args, **kwargs):
 
 @rank_zero_only
 def log_hyperparameters(
-    config: DictConfig,
-    model: pl.LightningModule,
-    datamodule: pl.LightningDataModule,
-    trainer: pl.Trainer,
-    callbacks: List[pl.Callback],
-    logger: List[pl.loggers.LightningLoggerBase],
+        config: DictConfig,
+        model: pl.LightningModule,
+        datamodule: pl.LightningDataModule,
+        trainer: pl.Trainer,
+        callbacks: List[pl.Callback],
+        logger: List[pl.loggers.LightningLoggerBase],
 ) -> None:
     """This method controls which parameters from Hydra config are saved by Lightning loggers.
 
@@ -129,8 +179,9 @@ def log_hyperparameters(
     hparams = {}
 
     # choose which parts of hydra config will be saved to loggers
-    hparams["trainer"] = config["trainer"]
-    hparams["model"] = config["model"]
+    hparams["trainer"] = config.train.trainer
+    hparams["student"] = config["student"]
+    hparams["teacher"] = config["teacher"]
     hparams["datamodule"] = config["datamodule"]
     if "seed" in config:
         hparams["seed"] = config["seed"]
@@ -138,13 +189,13 @@ def log_hyperparameters(
         hparams["callbacks"] = config["callbacks"]
 
     # save number of model parameters
-    hparams["model/params_total"] = sum(p.numel() for p in model.parameters())
-    hparams["model/params_trainable"] = sum(
-        p.numel() for p in model.parameters() if p.requires_grad
-    )
-    hparams["model/params_not_trainable"] = sum(
-        p.numel() for p in model.parameters() if not p.requires_grad
-    )
+    # hparams["student/params_total"] = sum(p.numel() for p in model.parameters())
+    # hparams["student/params_trainable"] = sum(
+    #    p.numel() for p in model.parameters() if p.requires_grad
+    # )
+    # hparams["student/params_not_trainable"] = sum(
+    #    p.numel() for p in model.parameters() if not p.requires_grad
+    # )
 
     # send hparams to all loggers
     trainer.logger.log_hyperparams(hparams)
@@ -156,12 +207,12 @@ def log_hyperparameters(
 
 
 def finish(
-    config: DictConfig,
-    model: pl.LightningModule,
-    datamodule: pl.LightningDataModule,
-    trainer: pl.Trainer,
-    callbacks: List[pl.Callback],
-    logger: List[pl.loggers.LightningLoggerBase],
+        config: DictConfig,
+        model: pl.LightningModule,
+        datamodule: pl.LightningDataModule,
+        trainer: pl.Trainer,
+        callbacks: List[pl.Callback],
+        logger: List[pl.loggers.LightningLoggerBase],
 ) -> None:
     """Makes sure everything closed properly."""
 

@@ -10,7 +10,6 @@ from pytorch_lightning import (
     seed_everything,
 )
 from pytorch_lightning.loggers import LightningLoggerBase
-
 from src.utils import utils
 
 log = utils.get_logger(__name__)
@@ -31,14 +30,13 @@ def train(config: DictConfig) -> Optional[float]:
     if "seed" in config:
         seed_everything(config.seed, workers=True)
 
-    # TODO: DATAMODULE
-    # Init lightning datamodule
-    log.info(f"Instantiating datamodule <{config.datamodule._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(config.datamodule)
-
-    # Init lightning model
-    log.info(f"Instantiating Distillation model <{config.model._target_}>")
-    distillation: LightningModule = hydra.utils.instantiate(config.model)
+    # Init Distillation
+    log.info(f"Instantiating Distillation <{config.distillation._target_}>")
+    distillation: LightningModule = hydra.utils.instantiate(config.distillation,
+                                                            train_cfg=config.train,
+                                                            teacher_cfg=config.teacher,
+                                                            student_cfg=config.student,
+                                                            data_cfg=config.datamodule)
 
     # Init lightning callbacks
     callbacks: List[Callback] = []
@@ -57,9 +55,9 @@ def train(config: DictConfig) -> Optional[float]:
                 logger.append(hydra.utils.instantiate(lg_conf))
 
     # Init lightning trainer
-    log.info(f"Instantiating trainer <{config.trainer._target_}>")
+    log.info(f"Instantiating trainer <{config.train.trainer._target_}>")
     trainer: Trainer = hydra.utils.instantiate(
-        config.trainer, callbacks=callbacks, logger=logger, _convert_="partial"
+        config.train.trainer, callbacks=callbacks, logger=logger, _convert_="partial"
     )
 
     # Send some parameters from config to all lightning loggers
@@ -67,7 +65,7 @@ def train(config: DictConfig) -> Optional[float]:
     utils.log_hyperparameters(
         config=config,
         model=distillation,
-        datamodule=datamodule,
+        datamodule=distillation.datamodule,
         trainer=trainer,
         callbacks=callbacks,
         logger=logger,
@@ -75,10 +73,10 @@ def train(config: DictConfig) -> Optional[float]:
 
     # Train the model
     log.info("Starting training!")
-    trainer.fit(model=distillation, datamodule=datamodule)
+    trainer.fit(model=distillation, datamodule=distillation.datamodule)
 
     # Evaluate model on test set, using the best model achieved during training
-    if config.get("test_after_training") and not config.trainer.get("fast_dev_run"):
+    if config.get("test_after_training") and not config.train-trainer.get("fast_dev_run"):
         log.info("Starting testing!")
         trainer.test()
 
@@ -87,7 +85,7 @@ def train(config: DictConfig) -> Optional[float]:
     utils.finish(
         config=config,
         model=distillation,
-        datamodule=datamodule,
+        datamodule=distillation.datamodule,
         trainer=trainer,
         callbacks=callbacks,
         logger=logger,

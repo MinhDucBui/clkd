@@ -12,7 +12,7 @@ hydra-optuna-sweeper==1.1.0
 # hydra-submitit-launcher
 
 # --------- loggers --------- #
-wandb
+wandb~=0.12.1
 # neptune-client
 # mlflow
 # comet-ml
@@ -25,11 +25,21 @@ isort           # import sorting
 flake8          # code analysis
 
 # --------- others --------- #
-python-dotenv   # loading env variables from .env file
-rich            # beautiful text formatting in terminal
-pytest          # tests
-sh              # for running bash commands in some tests
-scikit-learn    # used in some callbacks
-seaborn         # used in some callbacks
+python-dotenv~=0.19.0
+rich~=10.9.0
+pytest~=6.2.3
+sh~=1.14.2
+scikit-learn~=0.24.1
+seaborn~=0.11.1
 jupyterlab      # better jupyter notebooks
 pudb            # debugger
+
+omegaconf~=2.1.1
+numpy~=1.19.5
+transformers~=4.10.0
+matplotlib~=3.3.4
+pandas~=1.2.4
+requests~=2.25.1
+datasets~=1.11.0
+packaging~=20.9
+torchmetrics~=0.5.1
