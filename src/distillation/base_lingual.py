@@ -4,7 +4,7 @@ import torch
 from omegaconf import DictConfig
 from src.utils import utils
 import hydra
-from src.utils.utils import get_subset_dict
+from src.utils.utils import get_subset_dict, get_language_subset_index
 log = utils.get_logger(__name__)
 
 
@@ -43,7 +43,6 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
 
         # TODO: Init Metric
         # self.metric = hydra.utils.instantiate(train_cfg.metric)
-        print(id(self.model[1].parameters()))
 
         # Init Loss
         self.loss = hydra.utils.instantiate(train_cfg.loss)
@@ -56,6 +55,16 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         for model_idx in range(self.number_of_models):
             model_language = self.languages[model_idx][0].split("_")
             output = self.common_step(model_idx=model_idx, batch=batch, prefix="val")
+            for key, value in output.items():
+                output[key + "_" + "_".join(model_language)] = output.pop(key)
+            all_output.update(output)
+        return all_output
+
+    def test_step(self, batch, batch_idx):
+        all_output = {}
+        for model_idx in range(self.number_of_models):
+            model_language = self.languages[model_idx][0].split("_")
+            output = self.common_step(model_idx=model_idx, batch=batch, prefix="test")
             for key, value in output.items():
                 output[key + "_" + "_".join(model_language)] = output.pop(key)
             all_output.update(output)
@@ -78,11 +87,14 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         model_languages = self.language_mapping["id_model"][model_idx][0].split("_")
 
         # Get row index of the corresponding samples in the batch
-        idx = self.get_language_subset_index(batch_language, model_languages)
+        idx = get_language_subset_index(self.language_mapping, batch_language, model_languages)
 
-        # Get corresponding Student Number
-        # for name, param in self.model[model_idx].state_dict().items():
-        #    print(name, param)
+        # DEBUG:
+        #print("------\n\n")
+        #for name, param in self.model[model_idx].state_dict().items():
+        #    if name == "bert.encoder.layer.1.output.LayerNorm.weight":
+        #        print(name, param)
+
         # Get corresponding Batch
         subset_batch = get_subset_dict(cleaned_batch, idx)
         subset_labels = labels[idx]
@@ -106,21 +118,7 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
 
         return output
 
-    def get_language_subset_index(self, batch_language, model_languages):
-        idx = None
-        for index, single_language in enumerate(model_languages):
-            language_id = self.language_mapping["lang_id"][single_language][0]
-            subset_index = (batch_language == torch.tensor(language_id)).nonzero()[:, 0]
-            if index == 0:
-                idx = subset_index
-            else:
-                idx = torch.cat((idx, subset_index), 0)
-        return idx
-
-    """    
-    def validation_step(self, batch, batch_idx):
-        return self.common_step(batch, batch_idx, prefix='val')
-
+    """
     # def validation_epoch_end(self, outputs):
     #    val_mse = self.val_mse.compute()
 

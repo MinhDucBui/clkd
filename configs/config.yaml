@@ -36,10 +36,10 @@ distillation:
 
 train:
   batch_size: 2
-  total_steps: 20
+  total_steps: 1000
   trainer:
     log_every_n_steps: 1
-    track_grad_norm: 2
+    val_check_interval: 100
 
 student:
   use_pretrained_weights: false
