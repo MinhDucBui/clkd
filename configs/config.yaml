@@ -30,19 +30,27 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
+teacher:
+  model:
+    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
+
+student:
+  model:
+    use_pretrained_weights: false
+  tokenizer: ${teacher.tokenizer}
+
 distillation:
-  s_lang: ["ha"]
-  t_lang: ["eu", "gn"]
+  s_lang: ["ss"]
+  t_lang: ["ht", "mn"]
 
 train:
-  batch_size: 2
+  batch_size: 3
   total_steps: 1000
   trainer:
     log_every_n_steps: 1
     val_check_interval: 100
+    gpus: 0
 
-student:
-  use_pretrained_weights: false
 
 # Random Seed
 seed: 42
