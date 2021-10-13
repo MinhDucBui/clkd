@@ -7,9 +7,9 @@ from torch.nn import functional as F
 
 
 
-class LossHiltonKD:
+class LossHintonKD:
     """
-    Loss with Hilton knowledge distillation.
+    Loss with Hinton knowledge distillation.
     """
 
     def __init__(self, temperature, alpha):
