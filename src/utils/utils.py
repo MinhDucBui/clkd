@@ -16,6 +16,15 @@ import lzma, shutil
 
 # Utils for Data Module
 def download_file(language, output_folder):
+    """Download file from cc100.
+
+    Args:
+        language:
+        output_folder:
+
+    Returns:
+
+    """
     file_name = '{language}.txt.xz'.format(language=language)
     link = 'http://data.statmt.org/cc-100/' + file_name
     output_file = os.path.join(output_folder, file_name)
@@ -39,6 +48,14 @@ def download_file(language, output_folder):
 
 
 def decompress_xz(input_file):
+    """Function to decompress .xz file (cc100 format).
+
+    Args:
+        input_file:
+
+    Returns:
+
+    """
     input_file = Path(input_file)
     destination_dir = os.path.dirname(input_file)
     with lzma.open(input_file) as compressed:
@@ -52,6 +69,16 @@ def decompress_xz(input_file):
 
 # Utils for Model
 def get_language_subset_index(language_mapping, batch_language, model_languages):
+    """Get index of samples in batch that corresponds to the model's languages.
+
+    Args:
+        language_mapping:
+        batch_language:
+        model_languages:
+
+    Returns:
+
+    """
     idx = None
     for index, single_language in enumerate(model_languages):
         language_id = language_mapping["lang_id"][single_language][0]
@@ -64,18 +91,20 @@ def get_language_subset_index(language_mapping, batch_language, model_languages)
 
 
 def get_subset_dict(full_set: dict, idx: torch.Tensor):
+    """Get subset of batches that are contained in a dictionary.
+
+    Args:
+        full_set:
+        idx:
+
+    Returns:
+
+    """
     subset = {}
     for key, value in full_set.items():
         subset[key] = value[idx]
 
     return subset
-
-
-def get_languages_from_mapping(language_mapping):
-    languages = []
-    potential_languages = list(language_mapping["lang_id"].keys())
-    for single_language in potential_languages:
-        single_language.split("_")
 
 
 def bilingual_parse_mapping_language(s_lang, language, index: int):

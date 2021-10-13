@@ -64,6 +64,17 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
     # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
     # In our case: One optimizer corresponds to a model
     def training_step(self, batch, batch_idx, optimizer_idx=0):
+        """Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
+        In our case: One optimizer corresponds to a model.
+
+        Args:
+            batch:
+            batch_idx:
+            optimizer_idx:
+
+        Returns:
+
+        """
         return self.common_step(model_idx=optimizer_idx, batch=batch, prefix="train")
 
     def validation_step(self, batch, batch_idx):
@@ -71,16 +82,6 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         for model_idx in range(self.number_of_models):
             model_language = self.languages[model_idx][0].split("_")
             output = self.common_step(model_idx=model_idx, batch=batch, prefix="val")
-            for key, value in output.items():
-                output[key + "_" + "_".join(model_language)] = output.pop(key)
-            all_output.update(output)
-        return all_output
-
-    def test_step(self, batch, batch_idx):
-        all_output = {}
-        for model_idx in range(self.number_of_models):
-            model_language = self.languages[model_idx][0].split("_")
-            output = self.common_step(model_idx=model_idx, batch=batch, prefix="test")
             for key, value in output.items():
                 output[key + "_" + "_".join(model_language)] = output.pop(key)
             all_output.update(output)
@@ -135,28 +136,3 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         self.log("_".join(model_languages) + "_" + prefix + '_loss', loss)
 
         return output
-
-    """
-    # def validation_epoch_end(self, outputs):
-    #    val_mse = self.val_mse.compute()
-
-    #    TODO: Add Evaluation Metric
-    #    self.log("val/mse", val_mse, prog_bar=True)
-
-    def test_step(self, batch, batch_idx):
-        return self.common_step(batch, batch_idx, prefix='test')
-
-    # def test_epoch_end(self, outputs):
-    #    test_mse = self.test_mse.compute()
-
-    #    TODO: Add Evaluation Metric
-    #    self.log("test/mse", test_mse, prog_bar=True)
-
-    # This has to be on_fit_start and not "setup" because "setup" doesn't have the right device
-    def on_fit_start(self):
-        # Since _teacher isn't a submodule, it's not automatically moved to the GPU device
-        self._teacher.to(self.device, self.dtype)
-
-    def on_test_epoch_start(self):
-        self._teacher.to(self.device, self.dtype)
-    """
