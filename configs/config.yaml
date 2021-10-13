@@ -40,7 +40,7 @@ student:
   tokenizer: ${teacher.tokenizer}
 
 distillation:
-  s_lang: ["ha"]
+  s_lang: ["ss"]
   t_lang: ["ht", "mn"]
 
 train:

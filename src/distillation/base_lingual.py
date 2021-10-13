@@ -5,6 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.utils import utils
 import hydra
 from src.utils.utils import get_subset_dict, get_language_subset_index
+
 log = utils.get_logger(__name__)
 
 
@@ -60,6 +61,8 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         # Init Loss
         self.loss = hydra.utils.instantiate(train_cfg.loss)
 
+    # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
+    # In our case: One optimizer corresponds to a model
     def training_step(self, batch, batch_idx, optimizer_idx=0):
         return self.common_step(model_idx=optimizer_idx, batch=batch, prefix="train")
 
@@ -99,12 +102,14 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         # Get corresponding languages
         model_languages = self.language_mapping["id_model"][model_idx][0].split("_")
 
+        # Each batch consists of samples from multiple languages, but each model corresponds to a subset of languages
+        # Idea: Get only the samples that corresponds to the model's languages
         # Get row index of the corresponding samples in the batch
         idx = get_language_subset_index(self.language_mapping, batch_language, model_languages)
 
         # DEBUG:
-        #print("------\n\n")
-        #for name, param in self.model[model_idx].state_dict().items():
+        # print("------\n\n")
+        # for name, param in self.model[model_idx].state_dict().items():
         #    if name == "bert.encoder.layer.1.output.LayerNorm.weight":
         #        print(name, param)
 
@@ -155,4 +160,3 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
     def on_test_epoch_start(self):
         self._teacher.to(self.device, self.dtype)
     """
-

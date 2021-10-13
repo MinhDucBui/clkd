@@ -2,19 +2,13 @@ from typing import Optional
 from datasets import load_dataset, interleave_datasets
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
-from torch.utils.data.dataset import Dataset, ChainDataset
-from transformers import AutoTokenizer, PreTrainedTokenizer, DataCollatorForLanguageModeling
-import copy
+from torch.utils.data.dataset import Dataset
+from transformers import DataCollatorForLanguageModeling
 from pathlib import Path
-from itertools import islice
 import os.path
-import sys
-import requests
-from src.utils import utils
-import lzma, shutil
-import hydra
+from src.utils.utils import get_logger, download_file, decompress_xz
 
-log = utils.get_logger(__name__)
+log = get_logger(__name__)
 
 SEED = 42
 
@@ -63,9 +57,6 @@ class CC100DataModule(LightningDataModule):
     def num_labels(self) -> int:
         return self.tokenizer.vocab_size
 
-    # def __len__(self):
-    #    return len(self.data_train) if self.data_train is not None else 0
-
     # TODO: Move to Collator
     def load_dataset_iterable(self, paths_to_files):
 
@@ -94,31 +85,14 @@ class CC100DataModule(LightningDataModule):
 
         """
 
-        # We assume that file is a txt or txt.xz file
-        file_type = ".txt"
-        file_type_compressed = ".txt.xz"
+        # Get Training Data from cc100 for MLM
+        log.info("Prepare Training Data...")
+        self.get_training_data_from_cc100_data()
 
-        # Save the paths to the data
-        paths_to_files = {}
+        # Get Validation Data from JW300
+        log.info("Prepare Validation Data...")
+        self.get_validation_data()
 
-        # Loop through the languages
-        for single_language in self.languages:
-            if single_language == "False":
-                continue
-
-            # Construct path to language
-            file_path_txt = os.path.join(self.data_dir, single_language + file_type)
-            file_path_compressed = os.path.join(self.data_dir, single_language + file_type_compressed)
-
-            # Check if file exists
-            if not os.path.isfile(file_path_txt):
-                if not os.path.isfile(file_path_compressed):
-                    log.info("No txt or txt.xz file for {} exist! Proceed to download file...".format(single_language))
-                    self.download_file(single_language, self.data_dir)
-                self.decompress_xz(file_path_compressed)
-            paths_to_files[single_language] = file_path_txt
-
-        self.data_train = self.load_dataset_iterable(paths_to_files)
 
     def setup(self, stage: Optional[str] = None):
         """There are also data operations you might want to perform on every GPU. Use setup to do things like:
@@ -160,40 +134,35 @@ class CC100DataModule(LightningDataModule):
             collate_fn=self.collator
         )
 
-    def download_file(self, language, output_folder):
+    def get_training_data_from_cc100_data(self):
+        # We assume that file is a txt or txt.xz file
+        file_type = ".txt"
+        file_type_compressed = ".txt.xz"
 
-        file_name = '{language}.txt.xz'.format(language=language)
-        link = 'http://data.statmt.org/cc-100/' + file_name
-        output_file = os.path.join(output_folder, file_name)
-        print("\n")
-        with open(output_file, "wb") as f:
-            log.info("Downloading %s" % file_name)
-            response = requests.get(link, stream=True)
-            total_length = response.headers.get('content-length')
+        # Save the paths to the data
+        paths_to_files = {}
 
-            if total_length is None:  # no content length header
-                log.info("No File Length found. Can not display progress bar.")
-                f.write(response.content)
-            else:
-                dl = 0
-                total_length = int(total_length)
-                chunk_size = int(total_length / 100)
-                for data in response.iter_content(chunk_size):
-                    dl += len(data)
-                    f.write(data)
-                    done = int(50 * dl / total_length)
-                    sys.stdout.write("\r[%s%s] %s%%" % ('=' * done, ' ' * (50 - done), done * 2))
-                    sys.stdout.flush()
-        print("\n")
+        # Loop through the languages
+        for single_language in self.languages:
+            if single_language == "False":
+                continue
 
-    def decompress_xz(self, input_file):
-        log.info("Decompress %s" % input_file)
-        input_file = Path(input_file)
-        destination_dir = os.path.dirname(input_file)
-        with lzma.open(input_file) as compressed:
-            output_path = Path(destination_dir) / input_file.stem
-            with open(output_path, 'wb') as destination:
-                try:
-                    shutil.copyfileobj(compressed, destination)
-                except EOFError:
-                    log.info("File {} is corrupted. Please Delete the file.".format(input_file))
+            # Construct path to language
+            file_path_txt = os.path.join(self.data_dir, single_language + file_type)
+            file_path_compressed = os.path.join(self.data_dir, single_language + file_type_compressed)
+
+            # Check if file exists
+            if not os.path.isfile(file_path_txt):
+                if not os.path.isfile(file_path_compressed):
+                    log.info("No txt or txt.xz file for {} exist! Proceed to download file...".format(single_language))
+                    log.info("Downloading %s" % single_language)
+                    download_file(single_language, self.data_dir)
+                log.info("Start Decompressing %s" % file_path_compressed)
+                decompress_xz(file_path_compressed)
+            paths_to_files[single_language] = file_path_txt
+
+        self.data_train = self.load_dataset_iterable(paths_to_files)
+
+    # TODO: Validation Data
+    def get_validation_data(self):
+        pass

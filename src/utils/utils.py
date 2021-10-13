@@ -1,5 +1,4 @@
 import logging
-import sys
 import warnings
 from typing import List, Sequence
 import torch
@@ -8,8 +7,50 @@ import rich.syntax
 import rich.tree
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.utilities import rank_zero_only
+from pathlib import Path
+import os.path
+import sys
+import requests
+import lzma, shutil
 
 
+# Utils for Data Module
+def download_file(language, output_folder):
+    file_name = '{language}.txt.xz'.format(language=language)
+    link = 'http://data.statmt.org/cc-100/' + file_name
+    output_file = os.path.join(output_folder, file_name)
+    with open(output_file, "wb") as f:
+        response = requests.get(link, stream=True)
+        total_length = response.headers.get('content-length')
+
+        if total_length is None:  # no content length header
+            f.write(response.content)
+        else:
+            dl = 0
+            total_length = int(total_length)
+            chunk_size = int(total_length / 100)
+            for data in response.iter_content(chunk_size):
+                dl += len(data)
+                f.write(data)
+                done = int(50 * dl / total_length)
+                sys.stdout.write("\r[%s%s] %s%%" % ('=' * done, ' ' * (50 - done), done * 2))
+                sys.stdout.flush()
+            print("\n")
+
+
+def decompress_xz(input_file):
+    input_file = Path(input_file)
+    destination_dir = os.path.dirname(input_file)
+    with lzma.open(input_file) as compressed:
+        output_path = Path(destination_dir) / input_file.stem
+        with open(output_path, 'wb') as destination:
+            try:
+                shutil.copyfileobj(compressed, destination)
+            except EOFError:
+                sys.exit("File {} is corrupted. Please Delete the file.".format(input_file))
+
+
+# Utils for Model
 def get_language_subset_index(language_mapping, batch_language, model_languages):
     idx = None
     for index, single_language in enumerate(model_languages):
@@ -70,6 +111,7 @@ def monolingual_parse_mapping_language(language, prefix: str, index: int):
     return mapping_id_lang, index
 
 
+# Utils for Hydra
 def get_logger(name=__name__, level=logging.INFO) -> logging.Logger:
     """Initializes multi-GPU-friendly python logger."""
 
