@@ -10,22 +10,25 @@ from transformers import (
 
 
 def get_automodel(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
+
     if use_pretrained_weights:
         return AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path)
     else:
         architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+        architecture_cfg.vocab_size = cfg.vocab_size
         return AutoModelForMaskedLM.from_config(architecture_cfg)
 
 
 def get_bert(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
+
     if use_pretrained_weights and pretrained_model_name_or_path:
         return BertForMaskedLM.from_pretrained(pretrained_model_name_or_path)
     elif not use_pretrained_weights and pretrained_model_name_or_path:
         architecture_cfg = BertConfig.from_pretrained(pretrained_model_name_or_path)
         return BertForMaskedLM(architecture_cfg)
     else:
-        architecture_config = BertConfig(**cfg)
-        return BertForMaskedLM(architecture_config)
+        architecture_cfg = BertConfig(**cfg)
+        return BertForMaskedLM(architecture_cfg)
 
 
 def get_distillbert(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
@@ -35,8 +38,8 @@ def get_distillbert(pretrained_model_name_or_path, use_pretrained_weights, cfg=N
         architecture_cfg = DistilBertConfig.from_pretrained(pretrained_model_name_or_path)
         return DistilBertForMaskedLM(architecture_cfg)
     else:
-        architecture_config = DistilBertConfig(**cfg)
-        return DistilBertForMaskedLM(architecture_config)
+        architecture_cfg = DistilBertConfig(**cfg)
+        return DistilBertForMaskedLM(architecture_cfg)
 
 
 def get_xlmr(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
@@ -46,5 +49,5 @@ def get_xlmr(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
         architecture_cfg = XLMRobertaConfig.from_pretrained(pretrained_model_name_or_path)
         return XLMRobertaForMaskedLM(architecture_cfg)
     else:
-        architecture_config = XLMRobertaConfig(**cfg)
-        return XLMRobertaForMaskedLM(architecture_config)
+        architecture_cfg = XLMRobertaConfig(**cfg)
+        return XLMRobertaForMaskedLM(architecture_cfg)

@@ -1,18 +1,9 @@
 _recursive_: False
 _target_: src.datamodules.cc100.CC100DataModule
 
-defaults:
-  - ../tokenizer@s_tokenizer: autotokenizer.yaml
-  - ../tokenizer@t_tokenizer: autotokenizer.yaml
-
 pin_memory: False
 data_dir: ${cc}
 # TODO: Add languages to list, have to preprocess this variable
 batch_size: ${train.batch_size}
 num_workers: ${train.num_workers}
 
-s_tokenizer:
-  pretrained_model_name_or_path: ${student.pretrained_model_name_or_path}
-
-t_tokenizer:
-  pretrained_model_name_or_path: ${teacher.pretrained_model_name_or_path}

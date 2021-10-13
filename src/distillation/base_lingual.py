@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 from src.distillation.modules.optimizer import OptimizerMixin
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from src.utils import utils
 import hydra
 from src.utils.utils import get_subset_dict, get_language_subset_index
@@ -27,19 +27,32 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         # language_mapping is being initialized in mono/bi/multilingual class
         self.number_of_models = len(self.language_mapping["model_id"])
         self.languages = self.language_mapping["id_model"]
-        self.model = [hydra.utils.instantiate(self.student_cfg) for i in range(self.number_of_models)]
+
+        self.model = []
+        self.student_tokenizers = []
+        # Initialize Student Model and corresponding tokenizer
+        for i in range(self.number_of_models):
+            self.student_tokenizers.append(hydra.utils.instantiate(self.student_cfg.tokenizer))
+            OmegaConf.update(self.student_cfg.model, "cfg.vocab_size", self.student_tokenizers[i].vocab_size)
+            self.model.append(hydra.utils.instantiate(self.student_cfg.model))
 
         super().__init__()
 
-        # Init Data Module
-        log.info(f"Instantiating datamodule <{self.data_cfg._target_}>")
-        self.datamodule = hydra.utils.instantiate(self.data_cfg, language_mapping=self.language_mapping)
-
         # Init Teacher Model
-        log.info(f"Instantiating Teacher model <{self.teacher_cfg._target_}>")
-        self._teacher = hydra.utils.instantiate(self.teacher_cfg)
+        log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
+        self.teacher_tokenizer = hydra.utils.instantiate(self.teacher_cfg.tokenizer)
+        OmegaConf.update(self.teacher_cfg.model, "cfg.vocab_size", self.teacher_tokenizer.vocab_size)
+        self._teacher = hydra.utils.instantiate(self.teacher_cfg.model)
+
         self._teacher.eval()
         self.teacher_outputs = None
+
+        # Init Data Module
+        log.info(f"Instantiating datamodule <{self.data_cfg._target_}>")
+        self.datamodule = hydra.utils.instantiate(self.data_cfg,
+                                                  language_mapping=self.language_mapping,
+                                                  s_tokenizer=self.student_tokenizers,
+                                                  t_tokenizer=self.teacher_tokenizer)
 
         # TODO: Init Metric
         # self.metric = hydra.utils.instantiate(train_cfg.metric)

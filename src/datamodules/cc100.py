@@ -32,13 +32,13 @@ def add_language_tag_tokenizer(x, tokenizer, language_mapping):
 class CC100DataModule(LightningDataModule):
     def __init__(
             self,
-            s_tokenizer,
-            t_tokenizer,
-            language_mapping: dict,
             data_dir: str,
             batch_size: int,
             num_workers: int,
             pin_memory: bool,
+            language_mapping: dict,
+            s_tokenizer: list,
+            t_tokenizer,
             **kwargs,
     ):
         super().__init__()
@@ -52,7 +52,7 @@ class CC100DataModule(LightningDataModule):
         self.s_tokenizer = s_tokenizer
         self.t_tokenizer = t_tokenizer
         # TODO: Different Tokenizer for student/teacher
-        self.tokenizer = hydra.utils.instantiate(self.t_tokenizer)
+        self.tokenizer = self.t_tokenizer
 
         self.collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=True, mlm_probability=0.15)
         self.data_train: Optional[Dataset] = None
