@@ -2,7 +2,9 @@ from pytorch_lightning import LightningModule, Trainer
 import hydra
 import sys
 from src.utils import utils
+
 log = utils.get_logger(__name__)
+
 
 class OptimizerMixin:
     def setup(self, stage):

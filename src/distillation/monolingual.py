@@ -13,6 +13,7 @@ class Monolingual(BaseLingual, pl.LightningModule):
             teacher_cfg: DictConfig,
             student_cfg: DictConfig,
             data_cfg: DictConfig,
+            evaluation_cfg: DictConfig,
             *args,
             **kwargs,
     ):
@@ -24,7 +25,7 @@ class Monolingual(BaseLingual, pl.LightningModule):
         self.language_mapping = {}
         self.create_monolingual_language_mapping()
 
-        super().__init__(train_cfg, teacher_cfg, student_cfg, data_cfg)
+        super().__init__(train_cfg, teacher_cfg, student_cfg, data_cfg, evaluation_cfg)
 
     def create_monolingual_language_mapping(self):
         s_mapping_id_lang, s_index = monolingual_parse_mapping_language(self.s_lang, prefix="src", index=0)
@@ -35,6 +36,3 @@ class Monolingual(BaseLingual, pl.LightningModule):
         self.language_mapping["lang_id"] = mapping_lang_id
         self.language_mapping["model_id"] = self.language_mapping["lang_id"]
         self.language_mapping["id_model"] = self.language_mapping["id_lang"]
-
-
-

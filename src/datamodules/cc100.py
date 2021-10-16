@@ -19,7 +19,7 @@ def add_language_tag(dataset, language):
 
 def add_language_tag_tokenizer(x, tokenizer, language_mapping):
     language_tag = [language_mapping["lang_id"][x["language"]][0]]
-    x = dict(tokenizer(x["text"]))
+    x = dict(tokenizer(x["text"], truncation=True, padding=True))
     return dict(x, **{"language": language_tag})
 
 
@@ -36,7 +36,7 @@ class CC100DataModule(LightningDataModule):
             **kwargs,
     ):
         super().__init__()
-        #self.save_hyperparameters()
+
         self.data_dir = str(Path(data_dir))
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -92,7 +92,6 @@ class CC100DataModule(LightningDataModule):
         # Get Validation Data from JW300
         log.info("Prepare Validation Data...")
         self.get_validation_data()
-
 
     def setup(self, stage: Optional[str] = None):
         """There are also data operations you might want to perform on every GPU. Use setup to do things like:

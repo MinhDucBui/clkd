@@ -14,6 +14,7 @@ class Multilingual(BaseLingual, pl.LightningModule):
             teacher_cfg: DictConfig,
             student_cfg: DictConfig,
             data_cfg: DictConfig,
+            evaluation_cfg: DictConfig,
             *args,
             **kwargs,
     ):
@@ -24,7 +25,7 @@ class Multilingual(BaseLingual, pl.LightningModule):
         self.language_mapping = {}
         self.multilingual_mapping()
 
-        super().__init__(train_cfg, teacher_cfg, student_cfg, data_cfg)
+        super().__init__(train_cfg, teacher_cfg, student_cfg, data_cfg, evaluation_cfg)
 
     def multilingual_mapping(self):
         s_mapping_id_lang, s_index = monolingual_parse_mapping_language(self.s_lang, prefix="src", index=0)

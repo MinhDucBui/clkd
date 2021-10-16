@@ -36,7 +36,8 @@ def train(config: DictConfig) -> Optional[float]:
                                                             train_cfg=config.train,
                                                             teacher_cfg=config.teacher,
                                                             student_cfg=config.student,
-                                                            data_cfg=config.datamodule)
+                                                            data_cfg=config.datamodule,
+                                                            evaluation_cfg=config.evaluation)
 
     # Init lightning callbacks
     callbacks: List[Callback] = []

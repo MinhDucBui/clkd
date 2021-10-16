@@ -13,6 +13,9 @@ defaults:
     # Distillation Setup
   - distillation: bilingual.yaml
 
+    # Validation
+  - evaluation: mlm.yaml
+
   # Teacher and Student Model
   - model@teacher: automodel.yaml
   - model@student: automodel.yaml
@@ -30,9 +33,9 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
-teacher:
-  model:
-    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
+#teacher:
+#  model:
+#    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
 
 student:
   model:
@@ -45,10 +48,10 @@ distillation:
 
 train:
   batch_size: 3
-  total_steps: 1000
+  total_steps: 40
   trainer:
     log_every_n_steps: 1
-    val_check_interval: 100
+    val_check_interval: 10
     gpus: 0
 
 

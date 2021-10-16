@@ -13,6 +13,29 @@ import sys
 import requests
 import lzma, shutil
 
+# TODO: What if two student have same languages? Not unique in logger. Not allow this situation?
+def name_model_for_logger(model_name, languages):
+    if len(languages) == 1:
+        distilltype = " (monolingual)"
+    elif len(languages) == 2:
+        distilltype = " (bilingual)"
+    else:
+        distilltype = " (multilingual)"
+
+    return "_".join(languages) + distilltype
+
+
+def get_model_language(model_idx, language_mapping):
+    return language_mapping["id_model"][model_idx][0].split("_")
+
+
+def keep_only_model_forward_arguments(model, batch, remove_additional_keys=[]):
+    cleaned_batch = {key: value for key, value in batch.items() if key not in remove_additional_keys}
+    cleaned_batch = {key: value for (key, value) in cleaned_batch.items() if
+                     key in model.forward.__code__.co_varnames}
+
+    return cleaned_batch
+
 
 # Utils for Data Module
 def download_file(language, output_folder):
@@ -68,6 +91,27 @@ def decompress_xz(input_file):
 
 
 # Utils for Model
+def get_language_subset_batch(batch, language_mapping, model_languages):
+    """Each batch consists of samples from multiple languages, but each model corresponds to a subset of languages
+    Idea: Get only the samples that corresponds to the model's languages and get row index of the corresponding
+    samples in the batch.
+
+    Args:
+        batch:
+        language_mapping:
+        model_languages:
+
+    Returns:
+
+    """
+
+    idx = get_language_subset_index(language_mapping, batch["language"], model_languages)
+    # Get corresponding Batch
+    subset_batch = get_subset_dict(batch, idx)
+
+    return subset_batch, idx
+
+
 def get_language_subset_index(language_mapping, batch_language, model_languages):
     """Get index of samples in batch that corresponds to the model's languages.
 
