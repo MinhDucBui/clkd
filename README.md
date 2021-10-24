@@ -271,7 +271,7 @@ python run.py +trainer.max_time="00:12:00:00"
 # run 1 train, val and test loop, using only 1 batch
 python run.py debug=true
 
-# print full weight summary of all PyTorch modules
+# print full weight summary of all PyTorch mixin
 python run.py trainer.weights_summary="full"
 
 # print execution time profiling after training ends
@@ -516,7 +516,7 @@ defaults:
     - override /logger: null
 
 # we override default configurations with nulls to prevent them from loading at all
-# instead we define all modules and their paths directly in this config,
+# instead we define all mixin and their paths directly in this config,
 # so everything is stored in one place
 
 seed: 12345

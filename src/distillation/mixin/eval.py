@@ -5,9 +5,9 @@ from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 from pytorch_lightning.utilities.parsing import AttributeDict
 from transformers.file_utils import ModelOutput
-from src.utils.utils import get_model_language
 from transformers.tokenization_utils_base import BatchEncoding
 from src.utils import flatten_dict
+from src.utils.utils import logger_naming
 
 
 class EvalMixin:
@@ -66,30 +66,21 @@ class EvalMixin:
 
     def __init__(self) -> None:
 
-        self.metrics: DictConfig = getattr(self.hparams.evaluation_cfg, "metrics")
         # TODO: Change ID After structure change here
         self.number_of_models = len(self.language_mapping["model_id"])
-        self.initialize_metrics()
+        self.evaluation = DictConfig({})
+        self.metrics = DictConfig({})
 
-        # hparams used to fast-forward required attributes
-        self.evaluation = hydra.utils.instantiate(self.hparams.evaluation_cfg)
+        self.val_logger_names = logger_naming(self.hparams.evaluation_cfg, self.language_mapping, stage="val")
 
-        # pass identity if transform is not set
-        for attr in ["batch", "outputs", "step_outputs"]:
-            if not callable(getattr(self.evaluation.apply, attr, None)):
-                setattr(self.evaluation.apply, attr, None)
-        # Gets replaced by current model to evaluate
-        self.metrics: DictConfig = getattr(self.evaluation, "metrics")
+        for single_item in self.val_logger_names:
+            # hparams used to fast-forward required attributes
+            single_item["cfg"] = hydra.utils.instantiate(self.hparams.evaluation_cfg[single_item["task_name"]])
 
-    def initialize_metrics(self):
-        old_metrics = getattr(self.hparams.evaluation_cfg, "metrics")
-        self.hparams.evaluation_cfg.metrics = DictConfig({})
-        # TODO: Change ID After structure change here
-        for model_idx in range(self.number_of_models):
-            model_languages = get_model_language(model_idx, self.language_mapping)
-            for language in model_languages:
-                model_name = str(model_idx) + "_" + language
-                self.hparams.evaluation_cfg.metrics[model_name] = old_metrics
+            # pass identity if transform is not set
+            for attr in ["batch", "outputs", "step_outputs"]:
+                if not callable(getattr(single_item["cfg"].apply, attr, None)):
+                    setattr(single_item["cfg"].apply, attr, None)
 
     def prepare_metric_input(
             self,
@@ -170,9 +161,7 @@ class EvalMixin:
             outputs = self.evaluation.apply.outputs(outputs, batch)
 
         for k, v in self.metrics.items():
-
             if getattr(v, "on_step", False):
-
                 kwargs = self.prepare_metric_input(outputs, batch, v.compute)
                 v["metric"](**kwargs)
                 self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
@@ -191,6 +180,7 @@ class EvalMixin:
         Returns:
             dict: flattened outputs from evaluation steps
         """
+
         # if self.metrics is not None:
         outputs = flatten_dict(step_outputs)
         if self.evaluation.apply.step_outputs is not None:
@@ -203,7 +193,7 @@ class EvalMixin:
                 self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True)
         return outputs
 
-    def validation_step(self, batch, batch_idx) -> Union[None, dict]:
+    def validation_step(self, batch, batch_idx, dataloader_idx=0) -> Union[None, dict]:
         return self.eval_step(batch, stage="val")
 
     def validation_epoch_end(self, validation_step_outputs: list):

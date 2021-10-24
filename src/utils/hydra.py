@@ -2,7 +2,7 @@ import functools
 from dataclasses import dataclass
 from typing import Any, Callable, List
 from hydra.utils import get_method
-
+from src.models.modules.pooling import cls
 
 
 @dataclass
@@ -20,3 +20,25 @@ def partial(_partial_, *args, **kwargs):
         methods = PartialWrapper([get_method(p) for p in _partial_])
         return methods
     return functools.partial(get_method(_partial_), *args, **kwargs)
+
+
+def get_cls(outputs, batch):
+    outputs["cls"] = cls(outputs.hidden_states[-1], batch["attention_mask"])
+    return outputs
+
+
+# list of dictionaries flattend to one dictionary
+def prepare_retrieval_eval(outputs):
+    num = outputs["cls"].shape[0]
+    outputs["cls"] /= outputs["cls"].norm(2, dim=-1, keepdim=True)
+    src_embeds = outputs["cls"][: num // 2]
+    trg_embeds = outputs["cls"][num // 2:]
+    # (1000, 1000)
+    preds = src_embeds @ trg_embeds.T
+    # targets = (
+    #     torch.zeros((num // 2, num // 2)).fill_diagonal_(1).long().to(src_embeds.device)
+    # )
+    return {
+        "preds": preds,
+        # "targets": targets,
+    }

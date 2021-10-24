@@ -11,17 +11,19 @@ defaults:
   - train/loss: kdloss.yaml
 
     # Distillation Setup
-  - distillation: bilingual.yaml
+  - distillation: monolingual.yaml
 
     # Validation
-  - evaluation: mlm.yaml
+  #- evaluation@evaluation.mlm: mlm.yaml
+  - evaluation@evaluation.retrieval: retrieval.yaml
 
   # Teacher and Student Model
   - model@teacher: automodel.yaml
   - model@student: automodel.yaml
 
-  # Define Datamodule
-  - datamodule: cc100.yaml
+  # Define (Train/Val) Datamodule
+  - datamodule@datamodule.train: cc100.yaml
+  - datamodule@datamodule.val: jw300.yaml
 
   # Utils
   - callbacks: none.yaml # set this to null if you don't want to use callbacks
@@ -33,21 +35,19 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
-#teacher:
-#  model:
-#    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
+datamodule:
+  val:
+    max_length: 100
 
 student:
-  model:
-    use_pretrained_weights: false
-  tokenizer: ${teacher.tokenizer}
+  use_pretrained_weights: false
 
 distillation:
   s_lang: ["ss"]
   t_lang: ["ht", "mn"]
 
 train:
-  batch_size: 3
+  batch_size: 6
   total_steps: 40
   trainer:
     log_every_n_steps: 1
@@ -69,6 +69,9 @@ data_dir: ${work_dir}/data/
 
 # Path to CC100 Folder for MLM pretraining
 cc: ${data_dir}/cc100
+
+# Path to JW300 Folder for MLM Validation
+jw300: ${data_dir}/jw300
 
 # use `python run.py debug=true` for easy debugging!
 # this will run 1 train, val and test loop with only 1 batch

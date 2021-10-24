@@ -1,3 +1,7 @@
+logger:
+  name: "mlm"
+  # Report per language or as one pair (always per dataset for now) Options: "single"; "pair"
+  aggregate_language: "single"
 
 apply:
   batch: null  # takes (batch)

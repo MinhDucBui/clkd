@@ -1,6 +1,9 @@
 _recursive_: False
 _target_: src.datamodules.cc100.CC100DataModule
 
+defaults:
+  - /collate_fn: mlm
+
 pin_memory: False
 data_dir: ${cc}
 # TODO: Add languages to list, have to preprocess this variable

@@ -1,0 +1,12 @@
+_recursive_: False
+_target_: src.datamodules.jw300.JW300DataModule
+
+defaults:
+  - /collate_fn: sentence
+
+max_length: 1000
+data_dir: ${jw300}
+batch_size: 4
+num_workers: 0
+pin_memory: False
+

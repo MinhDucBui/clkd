@@ -74,7 +74,9 @@ def train(config: DictConfig) -> Optional[float]:
 
     # Train the model
     log.info("Starting training!")
-    trainer.fit(model=distillation, datamodule=distillation.datamodule)
+    trainer.fit(model=distillation,
+                datamodule=distillation.datamodule
+                )
 
     # Evaluate model on test set, using the best model achieved during training
     if config.get("test_after_training") and not config.train-trainer.get("fast_dev_run"):

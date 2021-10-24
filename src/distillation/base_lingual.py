@@ -7,8 +7,10 @@ from src.utils import utils
 from src.models.model import initialize_teacher_or_student
 import hydra
 from src.utils.utils import get_subset_dict, get_language_subset_batch, keep_only_model_forward_arguments, \
-    get_model_language, name_model_for_logger
+    get_model_language, name_model_for_logger, append_torch_in_dict
 from transformers.tokenization_utils_base import BatchEncoding
+from src.datamodules.mixed_data import MixedDataModule
+
 log = utils.get_logger(__name__)
 
 
@@ -52,11 +54,19 @@ class BaseLingual(OptimizerMixin, EvalMixin, pl.LightningModule):
         self.teacher_outputs = None
 
         # Init Data Module
-        log.info(f"Instantiating datamodule <{self.data_cfg._target_}>")
-        self.datamodule = hydra.utils.instantiate(self.data_cfg,
-                                                  language_mapping=self.language_mapping,
-                                                  s_tokenizer=self.student_tokenizers,
-                                                  t_tokenizer=self.teacher_tokenizer)
+        log.info(f"Instantiating datamodule")
+        if hasattr(self.data_cfg, "_target_"):
+            self.datamodule = hydra.utils.instantiate(self.data_cfg,
+                                                      language_mapping=self.language_mapping,
+                                                      s_tokenizer=self.student_tokenizers,
+                                                      t_tokenizer=self.teacher_tokenizer)
+
+        else:
+            # TODO: Maybe another structure? "Hardcoded" mixed data structure.
+            self.datamodule = MixedDataModule(self.data_cfg,
+                                              language_mapping=self.language_mapping,
+                                              s_tokenizer=self.student_tokenizers,
+                                              t_tokenizer=self.teacher_tokenizer)
 
         # Init Loss
         self.loss = hydra.utils.instantiate(train_cfg.loss)
@@ -112,7 +122,7 @@ class BaseLingual(OptimizerMixin, EvalMixin, pl.LightningModule):
         loss = self.loss(student_outputs, subset_teacher_output, subset_batch["labels"])
 
         # TODO: Model ID
-        model_name_logger = name_model_for_logger(str(model_idx), model_languages)
+        model_name_logger = name_model_for_logger(model_languages)
         tqdm_dict = {model_name_logger + "/" + prefix + "/" + "_".join(model_languages) + '/train_loss': loss}
 
         output = {
@@ -141,8 +151,62 @@ class BaseLingual(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         return output
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
 
+        language_pair = self.datamodule.validation_language_mapping[dataloader_idx].split("_")
+        models_cfg = [single_model for single_model in self.val_logger_names if single_model["dataset"] == "_".join(language_pair)]
+        val_outputs = {}
+
+        for model_cfg in models_cfg:
+            logger_name = model_cfg["logger_name"]
+            if logger_name not in model_cfg.keys():
+                val_outputs[logger_name] = {}
+
+            selected_language = model_cfg["selected_language"]
+            model_id = model_cfg["model_id"]
+
+            if model_cfg["eval_with"] != "":
+                model_eval_with_id = model_cfg["eval_with"]
+            else:
+                model_eval_with_id = None
+            for current_model_id in [model_id, model_eval_with_id]:
+                model_languages = get_model_language(current_model_id, self.language_mapping)
+                language_overlap = list(set(model_languages) & set(selected_language.split("_")))
+                subset_batch, idx = get_language_subset_batch(batch,
+                                                              self.language_mapping,
+                                                              language_overlap)
+
+                cleaned_batch = keep_only_model_forward_arguments(self.model[current_model_id],
+                                                                  subset_batch)
+
+                # TODO: Change Model ID
+                self.evaluation = model_cfg["cfg"]
+                self.metrics = self.evaluation.metrics
+
+                output_step = self.eval_step(cleaned_batch,
+                                             stage=logger_name,
+                                             model_idx=current_model_id)
+                val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
+
+        return val_outputs
+
+    def validation_epoch_end(self, validation_step_outputs: list):
+        outputs = {}
+
+        for value in validation_step_outputs:
+            output_step = []
+            logger_name = list(value[0].keys())[0]
+            for item_ in value:
+                output_step.append(item_[logger_name])
+            for cfg in self.val_logger_names:
+                if cfg["logger_name"] == logger_name:
+                    # TODO: Change Model ID
+                    self.evaluation = cfg["cfg"]
+                    self.metrics = self.evaluation.metrics
+            self.eval_epoch_end(logger_name, output_step)
+
+    """
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
         all_output = {}
         for model_idx in range(self.number_of_models):
             model_languages = get_model_language(model_idx, self.language_mapping)
@@ -167,3 +231,4 @@ class BaseLingual(OptimizerMixin, EvalMixin, pl.LightningModule):
                 all_output[model_name] = output_step
 
         return all_output
+    """
