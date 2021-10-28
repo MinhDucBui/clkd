@@ -9,18 +9,26 @@ from transformers import (
 )
 
 
-def get_automodel(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
+def get_automodel(pretrained_model_name_or_path, use_pretrained_weights, output_hidden_states, output_attentions,
+                  cfg=None, **kwargs):
 
     if use_pretrained_weights:
-        return AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path)
+        return AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path,
+                                                    output_hidden_states=output_hidden_states,
+                                                    output_attentions=output_attentions,
+                                                    **kwargs
+                                                    )
     else:
-        architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+        architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path,
+                                                      output_hidden_states=output_hidden_states,
+                                                      output_attentions=output_attentions,
+                                                      **kwargs
+                                                      )
         architecture_cfg.vocab_size = cfg.vocab_size
         return AutoModelForMaskedLM.from_config(architecture_cfg)
 
 
 def get_bert(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
-
     if use_pretrained_weights and pretrained_model_name_or_path:
         return BertForMaskedLM.from_pretrained(pretrained_model_name_or_path)
     elif not use_pretrained_weights and pretrained_model_name_or_path:

@@ -25,6 +25,8 @@ model:
     position_embedding_type: 'absolute'
     use_cache: True
     classifier_dropout: None
+    output_hidden_states: True
+    output_attentions: True
 
 # Define Tokenizer for teacher/student
 tokenizer:

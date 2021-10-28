@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 import pytorch_lightning as pl
 from src.distillation.modules.optimizer import OptimizerMixin
 import torch
@@ -10,6 +12,7 @@ log = utils.get_logger(__name__)
 
 
 class BaseLingual(OptimizerMixin, pl.LightningModule):
+
     def __init__(
             self,
             train_cfg: DictConfig,
@@ -98,6 +101,7 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         if model_idx == 0:
             # Calculate Teacher Outputs (don't need gradient)
             with torch.no_grad():
+                # MaskedLMOutput --> OrderedDict
                 self.teacher_outputs = self._teacher.forward(**cleaned_batch)  # (bs, seq_length, voc_size)
 
         # Get corresponding languages
@@ -121,8 +125,9 @@ class BaseLingual(OptimizerMixin, pl.LightningModule):
         # Get corresponding Teacher Outputs and Labels
         subset_teacher_output = get_subset_dict(self.teacher_outputs, idx)
 
-        # Get Loss
         student_outputs = self.model[model_idx](**subset_batch)  # (bs, seq_length, voc_size)
+
+        # Get Loss
         loss = self.loss(student_outputs, subset_teacher_output, subset_labels)
 
         tqdm_dict = {"_".join(model_languages) + '_loss': loss}
