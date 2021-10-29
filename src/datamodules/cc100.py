@@ -14,7 +14,7 @@ def add_language_tag(dataset, language):
 
 
 def add_language_tag_tokenizer(x, tokenizer, language_mapping):
-    language_tag = [language_mapping["lang_id"][x["language"]][0]]
+    language_tag = [language_mapping["lang_id"][x["language"]]]
     x = dict(tokenizer(x["text"], truncation=True, padding=True))
     return dict(x, **{"language": language_tag})
 
@@ -24,6 +24,7 @@ class CC100DataModule(BaseDataModule):
             self,
             s_tokenizer: list,
             t_tokenizer,
+            languages,
             language_mapping,
             *args,
             **kwargs,
@@ -33,7 +34,7 @@ class CC100DataModule(BaseDataModule):
         super().__init__(tokenizer=t_tokenizer,*args, **kwargs)
 
         self.language_mapping = language_mapping
-        self.languages = list(language_mapping["lang_id"].keys())
+        self.languages = languages
         self.s_tokenizer = s_tokenizer
         self.t_tokenizer = t_tokenizer
         # TODO: Different Tokenizer for student/teacher

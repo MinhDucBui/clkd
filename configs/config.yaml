@@ -4,22 +4,23 @@
 defaults:
 
   # Training Setup
-  - train: default.yaml
-  - train/trainer: default.yaml
-  - train/optimizer: adamw.yaml
-  - train/lr_scheduler: linear_warmup.yaml
-  - train/loss: kdloss.yaml
+  - trainer: default.yaml
 
-    # Distillation Setup
-  - distillation: monolingual.yaml
+  # Teacher
+  - teacher/model: automodel
+  - teacher/tokenizer: autotokenizer
 
-    # Validation
-  #- evaluation@evaluation.mlm: mlm.yaml
-  - evaluation@evaluation.retrieval: retrieval.yaml
+  # General Student Configs (e.g. Embedding and weight sharing)
+  - students: default
 
-  # Teacher and Student Model
-  - model@teacher: automodel.yaml
-  - model@student: automodel.yaml
+  # Student Specific Configs (e.g. architecture, tokenizer, loss, ...)
+  # 0. Student Model
+  - students/student_specific@students.student_0: default
+  # 1. Student Model
+  - students/student_specific@students.student_1: default
+  # 2. Student Model
+  #- students/student_specific@students.student_2: default
+
 
   # Define (Train/Val) Datamodule
   - datamodule@datamodule.train: cc100.yaml
@@ -35,24 +36,56 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
+#teacher:
+#  model:
+#    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
+
+students:
+  # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
+  # Order is determined by order of listed item
+  student_0:
+    languages: [ "ss", "mn" ]
+  student_1:
+    languages: [ "ss", "ht" ]
+
+  weight_sharing_across_students: false
+  # TODO: Functionality
+  # Naming convention: ( ( {Student Name}, {Layer Number} ), ( {Student Name}, {Layer Number}) )
+  # E.g. false or
+  # - ((student_0, 1), (student_1, 1))
+  # - ((student_0, 6), (student_1, 5))
+  # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
+
+  embed_sharing: "in_each_model"
+  # TODO: Functionality
+  # E.g. "in_each_model" <-> Share embeddings between languages in each model
+  # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
+  # E.g.
+  # - ((student_1, ss), (student_0, ss))
+
+  evaluation:
+    retrieval:
+      evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+        - ((student_0, mn), (student_0, ss))
+        - ((student_1, ht), (student_1, ss))
+
+    mlm: null
+    #mlm:
+    #  aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
+    #  evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
+    #    - ((student_0, ht), (student_0, ss))
+    #    - ((student_1, mn), (student_1, ss))
+
+
 datamodule:
   val:
     max_length: 100
 
-student:
-  use_pretrained_weights: false
-
-distillation:
-  s_lang: ["ss"]
-  t_lang: ["ht", "mn"]
-
-train:
-  batch_size: 6
-  total_steps: 40
-  trainer:
-    log_every_n_steps: 1
-    val_check_interval: 10
-    gpus: 0
+trainer:
+  log_every_n_steps: 1
+  val_check_interval: 10
+  max_steps: 100
+  gpus: 0
 
 
 # Random Seed

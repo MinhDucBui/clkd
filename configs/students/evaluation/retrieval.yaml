@@ -1,3 +1,5 @@
+evaluate_with: ??? # E.g. ((0, "en"), (0, "ht"))
+
 logger:
   name: "retrieval" # Please set name the same as the cfg name
   # Todo: Later, just pass the student models in here

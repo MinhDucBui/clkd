@@ -11,6 +11,8 @@ class MixedDataModule(BaseDataModule):
             data_cfg,
             s_tokenizer: list,
             t_tokenizer,
+            train_languages,
+            val_languages,
             language_mapping,
             *args,
             **kwargs,
@@ -30,11 +32,13 @@ class MixedDataModule(BaseDataModule):
         self.train_datamodule = hydra.utils.instantiate(data_cfg.train,
                                                         s_tokenizer=s_tokenizer,
                                                         t_tokenizer=t_tokenizer,
+                                                        languages=train_languages,
                                                         language_mapping=language_mapping,
                                                         )
         self.val_datamodule = hydra.utils.instantiate(data_cfg.val,
                                                       s_tokenizer=s_tokenizer,
                                                       t_tokenizer=t_tokenizer,
+                                                      languages=val_languages,
                                                       language_mapping=language_mapping,
                                                       )
         # TODO: Too much hardcoded. Generalize.

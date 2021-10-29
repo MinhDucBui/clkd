@@ -2,6 +2,6 @@
 _recursive_: false
 
 _target_: transformers.AutoTokenizer.from_pretrained
-pretrained_model_name_or_path: ???
+pretrained_model_name_or_path: ${teacher.model.pretrained_model_name_or_path}
 use_fast: true
 

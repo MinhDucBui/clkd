@@ -1,6 +1,6 @@
 from transformers import AutoModelForMaskedLM, AutoConfig
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf, open_dict
 from transformers import (
     XLMRobertaConfig,
     XLMRobertaForMaskedLM,
@@ -18,7 +18,10 @@ def initialize_teacher_or_student(cfg):
 
     """
     tokenizer = hydra.utils.instantiate(cfg.tokenizer)
-    OmegaConf.update(cfg.model, "cfg.vocab_size", tokenizer.vocab_size)
+    OmegaConf.set_struct(cfg, True)
+    with open_dict(cfg):
+        OmegaConf.update(cfg.model, "cfg.vocab_size", tokenizer.vocab_size)
+
     model, architecture_cfg = hydra.utils.instantiate(cfg.model)
     # If not max sequence length is given in tokenizer
     if tokenizer.model_max_length > int(1e20):

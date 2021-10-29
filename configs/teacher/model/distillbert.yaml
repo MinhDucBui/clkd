@@ -1,0 +1,19 @@
+_target_: src.models.model.get_distillbert
+pretrained_model_name_or_path: "distilbert-base-uncased"
+use_pretrained_weights: true
+cfg:
+  # Architecture (Default architecture):
+  vocab_size: 30522 # is being automatically updated based on the tokenizer
+  max_position_embeddings: 512
+  sinusoidal_pos_embds: False
+  n_layers: 6
+  n_heads: 12
+  dim: 768
+  hidden_dim: 3072
+  dropout: 0.1
+  attention_dropout: 0.1
+  activation: 'gelu'
+  initializer_range: 0.02
+  qa_dropout: 0.1
+  seq_classif_dropout: 0.2
+  pad_token_id: 0

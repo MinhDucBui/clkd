@@ -2,7 +2,6 @@ from typing import Optional, List, Union
 import opustools
 from datasets.arrow_dataset import concatenate_datasets
 from datasets.load import load_dataset
-import datasets
 from pathlib import Path
 from src.datamodules.base import BaseDataModule
 from torch.utils.data.dataloader import DataLoader
@@ -20,6 +19,7 @@ class JW300DataModule(BaseDataModule):
             self,
             s_tokenizer: list,
             t_tokenizer,
+            languages,
             language_mapping,
             max_length: int,
             *args,
@@ -31,7 +31,7 @@ class JW300DataModule(BaseDataModule):
         # see BaseDataModule
         super().__init__(tokenizer=self.tokenizer, *args, **kwargs)
         # TODO: Should be set automatically (coming back after restructuring)
-        self.data_languages = get_corresponding_language_pairs(language_mapping)
+        self.languages = languages
 
         self.files = {}
         self.data_val = []
@@ -42,20 +42,19 @@ class JW300DataModule(BaseDataModule):
         self.max_length = max_length
 
     def prepare_data(self):
-        """
-        Download MNLI from Huggingface datasets hub.
-        See: https://huggingface.co/datasets/glue
-        """
         # TODO: What if other language shorts?
-        for pair_language in self.data_languages:
+        for pair_language in self.languages:
             path_folder = Path(self.data_dir) / Path("_".join(pair_language))
             Path.mkdir(path_folder, parents=True, exist_ok=True)
             file_name = self.data_dir.__str__() + "/" + pair_language[0] + "_" + pair_language[1] + ".txt"
+            if Path(file_name).is_file():
+                self.files["_".join(pair_language)] = file_name
+                continue
             # download with opustools
             opus_reader = opustools.OpusRead(
                 directory="JW300",
-                source=pair_language[0],
-                target=pair_language[1],
+                source="ss",
+                target="mn",
                 write_mode="moses",
                 write=[file_name],
                 download_dir=path_folder.__str__(),
@@ -68,7 +67,6 @@ class JW300DataModule(BaseDataModule):
         split_samples = []
         for key in self.files.keys():
             split_samples.append('{}[0:{}]'.format(key, self.max_length))
-
         datasets = load_dataset('text',
                                 data_files={key: file for key, file in self.files.items()},
                                 split=split_samples)
@@ -79,22 +77,21 @@ class JW300DataModule(BaseDataModule):
 
             language_pair_dataset = language_pair_dataset.add_column(
                 "label", range(len(language_pair_dataset))
-            )
-            language_pair_dataset = language_pair_dataset.rename_column("text", "text_old")
+            ).rename_column("text", "text_old")
 
             src = (
-                language_pair_dataset.map(lambda x: {"text": x["text_old"].split("\t")[0].strip()})
+                language_pair_dataset.map(lambda x: {"text": x["text_old"].split("\t")[0].strip() if len(x["text_old"].split("\t")) > 1 else None})
                     .remove_columns(["text_old"])
             )
-            src = src.add_column("language", [self.language_mapping["lang_id"][language_pair.split("_")[0]][0]] * len(
-                language_pair_dataset))
+            src = src.filter(lambda example: example['text'] is not None)
+            src = src.add_column("language", [self.language_mapping["lang_id"][language_pair.split("_")[0]]] * len(src))
 
             trg = (
-                language_pair_dataset.map(lambda x: {"text": x["text_old"].split("\t")[1].strip()})
+                language_pair_dataset.map(lambda x: {"text": x["text_old"].split("\t")[1].strip() if len(x["text_old"].split("\t")) > 1 else None})
                     .remove_columns(["text_old"])
             )
-            trg = trg.add_column("language", [self.language_mapping["lang_id"][language_pair.split("_")[1]][0]] * len(
-                language_pair_dataset))
+            trg = trg.filter(lambda example: example['text'] is not None)
+            trg = trg.add_column("language", [self.language_mapping["lang_id"][language_pair.split("_")[1]]] * len(trg))
 
             if stage in (None, "val"):
                 self.data_val.append(concatenate_datasets([src, trg]))

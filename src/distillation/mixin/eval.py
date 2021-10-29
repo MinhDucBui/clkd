@@ -7,7 +7,6 @@ from pytorch_lightning.utilities.parsing import AttributeDict
 from transformers.file_utils import ModelOutput
 from transformers.tokenization_utils_base import BatchEncoding
 from src.utils import flatten_dict
-from src.utils.utils import logger_naming
 
 
 class EvalMixin:
@@ -66,17 +65,11 @@ class EvalMixin:
 
     def __init__(self) -> None:
 
-        # TODO: Change ID After structure change here
-        self.number_of_models = len(self.language_mapping["model_id"])
         self.evaluation = DictConfig({})
         self.metrics = DictConfig({})
-
-        self.val_logger_names = logger_naming(self.hparams.evaluation_cfg, self.language_mapping, stage="val")
-
-        for single_item in self.val_logger_names:
+        for single_item in self.validation_mapping:
             # hparams used to fast-forward required attributes
-            single_item["cfg"] = hydra.utils.instantiate(self.hparams.evaluation_cfg[single_item["task_name"]])
-
+            single_item["cfg"] = hydra.utils.instantiate(self.cfg.students.evaluation[single_item["task_name"]])
             # pass identity if transform is not set
             for attr in ["batch", "outputs", "step_outputs"]:
                 if not callable(getattr(single_item["cfg"].apply, attr, None)):

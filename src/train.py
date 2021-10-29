@@ -1,5 +1,5 @@
 from typing import List, Optional
-from omegaconf import OmegaConf
+from src.distillation.base_module import BaseModule
 import hydra
 from omegaconf import DictConfig
 from pytorch_lightning import (
@@ -30,14 +30,8 @@ def train(config: DictConfig) -> Optional[float]:
     if "seed" in config:
         seed_everything(config.seed, workers=True)
 
-    # Init Distillation
-    log.info(f"Instantiating Distillation <{config.distillation._target_}>")
-    distillation: LightningModule = hydra.utils.instantiate(config.distillation,
-                                                            train_cfg=config.train,
-                                                            teacher_cfg=config.teacher,
-                                                            student_cfg=config.student,
-                                                            data_cfg=config.datamodule,
-                                                            evaluation_cfg=config.evaluation)
+    # Init Module
+    distillation: LightningModule = BaseModule(cfg=config)
 
     # Init lightning callbacks
     callbacks: List[Callback] = []
@@ -56,9 +50,9 @@ def train(config: DictConfig) -> Optional[float]:
                 logger.append(hydra.utils.instantiate(lg_conf))
 
     # Init lightning trainer
-    log.info(f"Instantiating trainer <{config.train.trainer._target_}>")
+    log.info(f"Instantiating trainer <{config.trainer._target_}>")
     trainer: Trainer = hydra.utils.instantiate(
-        config.train.trainer, callbacks=callbacks, logger=logger, _convert_="partial"
+        config.trainer, callbacks=callbacks, logger=logger, _convert_="partial"
     )
 
     # Send some parameters from config to all lightning loggers
@@ -79,7 +73,7 @@ def train(config: DictConfig) -> Optional[float]:
                 )
 
     # Evaluate model on test set, using the best model achieved during training
-    if config.get("test_after_training") and not config.train-trainer.get("fast_dev_run"):
+    if config.get("test_after_training") and not config.train.trainer.get("fast_dev_run"):
         log.info("Starting testing!")
         trainer.test()
 
