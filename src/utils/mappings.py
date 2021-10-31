@@ -2,32 +2,32 @@ from omegaconf import OmegaConf
 import copy
 
 
-def create_mapping(students_cfg, evaluation_cfg):
-    language_mapping = create_language_mapping(students_cfg)
-    student_mapping = create_model_mapping(students_cfg)
-    validation_mapping = create_validation_mapping(evaluation_cfg,student_mapping, stage="val")
+def create_mapping(students_cfg):
+    language_mapping = create_language_mapping(students_cfg.individual)
+    student_mapping = create_model_mapping(students_cfg.individual)
+    validation_mapping = create_validation_mapping(students_cfg.evaluation, student_mapping, stage="val")
     return language_mapping, student_mapping, validation_mapping
 
 
-def create_model_mapping(students_cfg):
+def create_model_mapping(students_model_cfg):
     mapping = {"model_id": {}, "id_model": {}}
     index = 0
-    for key in list(students_cfg.keys()):
+    for key in list(students_model_cfg.keys()):
         if "student_" not in key:
             continue
-        mapping["model_id"][key] = {"idx": index, "languages": students_cfg[key]["languages"]}
-        mapping["id_model"][index] = {"model_name": key, "languages": students_cfg[key]["languages"]}
+        mapping["model_id"][key] = {"idx": index, "languages": students_model_cfg[key]["languages"]}
+        mapping["id_model"][index] = {"model_name": key, "languages": students_model_cfg[key]["languages"]}
         index += 1
     return OmegaConf.create(mapping)
 
 
-def create_language_mapping(students_cfg):
+def create_language_mapping(students_model_cfg):
     mapping = {"lang_id": {}, "id_lang": {}}
     languages = []
-    for key in sorted(list(students_cfg.keys())):
+    for key in sorted(list(students_model_cfg.keys())):
         if "student_" not in key:
             continue
-        languages += students_cfg[key]["languages"]
+        languages += students_model_cfg[key]["languages"]
 
     for index, language in enumerate(set(languages)):
         mapping["lang_id"][language] = index

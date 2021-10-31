@@ -29,10 +29,11 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         self.cfg = cfg
         self.teacher_cfg = cfg.teacher
         self.students_cfg = cfg.students
+        self.individual_students_cfg = cfg.students.individual
         self.data_cfg = cfg.datamodule
         self.trainer_cfg = cfg.trainer
         self.students_model_cfg = {}
-        for model_name, model_cfg in self.students_cfg.items():
+        for model_name, model_cfg in self.individual_students_cfg.items():
             if "student_" not in model_name:
                 continue
             self.students_model_cfg[model_name] = model_cfg
@@ -43,7 +44,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         # Map language to id, student to languages and get validation tasks
         self.language_mapping, self.student_mapping, self.validation_mapping \
-            = create_mapping(self.students_cfg, self.evaluation_cfg)
+            = create_mapping(self.students_cfg)
 
         self.number_of_models = len(self.student_mapping["model_id"])
 

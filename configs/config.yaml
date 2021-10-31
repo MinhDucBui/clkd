@@ -13,15 +13,6 @@ defaults:
   # General Student Configs (e.g. Embedding and weight sharing)
   - students: default
 
-  # Student Specific Configs (e.g. architecture, tokenizer, loss, ...)
-  # 0. Student Model
-  - students/student_specific@students.student_0: default
-  # 1. Student Model
-  - students/student_specific@students.student_1: default
-  # 2. Student Model
-  #- students/student_specific@students.student_2: default
-
-
   # Define (Train/Val) Datamodule
   - datamodule@datamodule.train: cc100.yaml
   - datamodule@datamodule.val: jw300.yaml
@@ -41,12 +32,13 @@ defaults:
 #    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
 
 students:
-  # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
-  # Order is determined by order of listed item
-  student_0:
-    languages: [ "ss", "mn" ]
-  student_1:
-    languages: [ "ss", "ht" ]
+  individual:
+    # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
+    # Order is determined by order of listed item
+    student_0:
+      languages: [ "ss", "mn" ]
+    student_1:
+      languages: [ "ss", "ht" ]
 
   weight_sharing_across_students: false
   # TODO: Functionality

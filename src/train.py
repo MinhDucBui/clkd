@@ -4,11 +4,11 @@ import hydra
 from omegaconf import DictConfig
 from pytorch_lightning import (
     Callback,
-    LightningDataModule,
     LightningModule,
     Trainer,
     seed_everything,
 )
+from src.callbacks.config_callback import config_callback
 from pytorch_lightning.loggers import LightningLoggerBase
 from src.utils import utils
 
@@ -30,16 +30,20 @@ def train(config: DictConfig) -> Optional[float]:
     if "seed" in config:
         seed_everything(config.seed, workers=True)
 
-    # Init Module
-    distillation: LightningModule = BaseModule(cfg=config)
-
     # Init lightning callbacks
     callbacks: List[Callback] = []
     if "callbacks" in config:
-        for _, cb_conf in config.callbacks.items():
+        for cb_name, cb_conf in config.callbacks.items():
             if "_target_" in cb_conf:
                 log.info(f"Instantiating callback <{cb_conf._target_}>")
                 callbacks.append(hydra.utils.instantiate(cb_conf))
+            elif cb_name == "config_callback":
+                log.info(f"Instantiating config callback for <{cb_name}>")
+                config = config_callback(config, cb_conf)
+    utils.print_config(config, resolve=True)
+
+    # Init Module
+    distillation: LightningModule = BaseModule(cfg=config)
 
     # Init lightning loggers
     logger: List[LightningLoggerBase] = []

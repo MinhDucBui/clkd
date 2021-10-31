@@ -1,6 +1,7 @@
 defaults:
   - evaluation@evaluation.mlm: mlm.yaml
   - evaluation@evaluation.retrieval: retrieval.yaml
+  - individual: default.yaml
 
 weight_sharing_across_students: false
 # TODO: Functionality
