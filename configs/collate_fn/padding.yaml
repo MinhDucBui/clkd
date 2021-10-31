@@ -1,0 +1,2 @@
+_target_: src.utils.hydra.partial
+_partial_: transformers.data.data_collator.DataCollatorWithPadding

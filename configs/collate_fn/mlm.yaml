@@ -1,4 +1,6 @@
-_target_: transformers.data.data_collator.DataCollatorForLanguageModeling
+_recursive_: false
+_target_: src.utils.hydra.partial
+_partial_: transformers.data.data_collator.DataCollatorForLanguageModeling
 
 mlm: True
 mlm_probability: 0.15

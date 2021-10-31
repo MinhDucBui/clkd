@@ -1,5 +1,6 @@
 from omegaconf import OmegaConf
 import copy
+from src.utils.utils import name_model_for_logger
 
 
 def create_mapping(students_cfg):
@@ -59,29 +60,31 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
             for metric_name in getattr(task_cfg, "metrics").keys():
                 new_item["metric_name"] = metric_name
                 new_item["cfg"] = {key: task_cfg[key] for key in ["apply", "step_outputs", "metrics"]}
+                new_item["model_language"] = []
                 if getattr(task_cfg, "aggregate", True):
-                    if len(eval_model_tuple) > 1:
-                        for model_tuple in eval_model_tuple[1:]:
-                            model_tuple[0] = model_mapping["model_id"][model_tuple[0]]["idx"]
-                        new_item["eval_with"] = eval_model_tuple[1:]
-                    else:
-                        new_item["eval_with"] = ()
                     new_item["model_name"] = eval_model_tuple[0][0]
                     new_item["model_idx"] = model_mapping["model_id"][new_item["model_name"]]["idx"]
-                    new_item["model_language"] = eval_model_tuple[0][1]
+                    new_item["model_language"] = model_mapping["model_id"][new_item["model_name"]]["languages"]
+                    if len(eval_model_tuple) > 1:
+                        for model_tuple in eval_model_tuple:
+                            model_tuple[0] = model_mapping["model_id"][model_tuple[0]]["idx"]
+                        new_item["eval_with"] = eval_model_tuple
+                    else:
+                        new_item["eval_with"] = []
+                    new_item["current_language"] = [tuple_[1] for tuple_ in eval_model_tuple]
                     logger_names.append(copy.deepcopy(new_item))
                 else:
                     # Create for each model a separate item
                     for eval_model in eval_model_tuple:
                         new_item["model_name"] = eval_model[0]
                         new_item["model_idx"] = model_mapping["model_id"][new_item["model_name"]]["idx"]
-                        new_item["eval_with"] = ()
-                        new_item["model_language"] = eval_model_tuple[0][1]
+                        new_item["eval_with"] = []
+                        new_item["model_language"] = model_mapping["model_id"][new_item["model_name"]]["languages"]
+                        new_item["current_language"] = [eval_model[1]]
                         logger_names.append(copy.deepcopy(new_item))
 
     for item in logger_names:
-        all_languages = [item["model_language"]] + [eval_tuple[1] for eval_tuple in item["eval_with"]]
-        item["logger_name"] = "/".join([item["model_language"], stage, item["task_name"],
-                                        "_".join(item["dataset"]) + "(dataset)", "_".join(all_languages)])
+        item["logger_name"] = "/".join([name_model_for_logger(item["model_language"]), stage, item["task_name"],
+                                        "_".join(item["dataset"]) + "(dataset)", "_".join(item["current_language"])])
 
     return logger_names

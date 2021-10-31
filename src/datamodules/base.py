@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from types import MethodType
-from typing import Callable, Optional
+from typing import Optional, List, Union, Callable
 from pathlib import Path
 import hydra
 from datasets.arrow_dataset import Dataset
@@ -40,6 +40,7 @@ class BaseDataModule(LightningDataModule, ABC):
 
     def __init__(
             self,
+            eval_cfg: Optional[DictConfig] = None,
             tokenizer: Optional[PreTrainedTokenizer] = None,
             data_dir: Optional[str] = None,
             collate_fn: Optional[DictConfig] = None,
@@ -59,6 +60,7 @@ class BaseDataModule(LightningDataModule, ABC):
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.seed = seed
+        self.eval_cfg = eval_cfg
 
         self.dataset: Optional[Dataset] = None
         self.data_train: Optional[Dataset] = None
@@ -67,8 +69,21 @@ class BaseDataModule(LightningDataModule, ABC):
 
         self.collate_fn: Callable = hydra.utils.instantiate(collate_fn, tokenizer=tokenizer)
         self.train_collate_fn: Callable = hydra.utils.instantiate(train_collate_fn)
-        self.val_collate_fn: Callable = hydra.utils.instantiate(val_collate_fn)
-        self.test_collate_fn: Callable = hydra.utils.instantiate(test_collate_fn)
+        if self.eval_cfg:
+            self.val_collate_fn = []
+            self.val_collate_fn_dict = {}
+            for key, value in self.eval_cfg.items():
+                self.val_collate_fn_dict[key] = self.eval_cfg[key]["collate_fn"]
+        else:
+            self.val_collate_fn: Callable = hydra.utils.instantiate(val_collate_fn, tokenizer=tokenizer)
+            if self.val_collate_fn is not None:
+                self.val_collate_fn = self.val_collate_fn()
+
+        # Because of partial, call the collate
+        if self.collate_fn is not None:
+            self.collate_fn = self.collate_fn()
+        if self.train_collate_fn is not None:
+            self.train_collate_fn = self.train_collate_fn()
 
         self.overrides = hydra.utils.instantiate(overrides)
         if self.overrides is not None:
@@ -118,27 +133,25 @@ class BaseDataModule(LightningDataModule, ABC):
         )
 
     # TODO(fdschmidt93): support custom sampler
-    def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.data_val,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=self.val_collate_fn
-            if self.val_collate_fn is not None
-            else self.collate_fn,
-            shuffle=False,
-        )
+    def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
+        val_dataloaders = []
+        if not isinstance(self.data_val, list):
+            self.data_val = [self.data_val]
+        for index in range(len(self.data_val)):
+            dataloader_args = {"dataset": get_value_for_list_or_value(self.data_val, index),
+                               "batch_size": get_value_for_list_or_value(self.batch_size, index),
+                               "num_workers": get_value_for_list_or_value(self.num_workers, index),
+                               "pin_memory": get_value_for_list_or_value(self.pin_memory, index),
+                               "collate_fn": get_value_for_list_or_value(self.val_collate_fn, index)
+                               if self.val_collate_fn is not None
+                               else get_value_for_list_or_value(self.collate_fn, index),
+                               "shuffle": False}
+            val_dataloaders.append(DataLoader(**dataloader_args))
+        return val_dataloaders
 
-    # TODO(fdschmidt93): support custom sampler
-    def test_dataloader(self) -> DataLoader:
-        return DataLoader(
-            dataset=self.data_test,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=self.test_collate_fn
-            if self.test_collate_fn is not None
-            else self.collate_fn,
-            shuffle=False,
-        )
+
+def get_value_for_list_or_value(potential_list, index):
+    if isinstance(potential_list, list):
+        return potential_list[index]
+    else:
+        return potential_list

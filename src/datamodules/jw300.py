@@ -1,17 +1,39 @@
-from typing import Optional, List, Union
+from typing import Optional
 import opustools
 from datasets.arrow_dataset import concatenate_datasets
 from datasets.load import load_dataset
 from pathlib import Path
 from src.datamodules.base import BaseDataModule
-from torch.utils.data.dataloader import DataLoader
-from src.utils.collator import SentenceCollator
-from src.utils.utils import get_corresponding_language_pairs
+import sys
+import hydra
 
 
-def add_language_tag(x, language_mapping):
-    language_tag = [language_mapping["lang_id"][x["language"]][0]]
+def add_language_tag_tokenizer(x, tokenizer, language_mapping):
+    language_tag = [language_mapping["lang_id"][x["language"]]]
+    x = dict(tokenizer(x["text"], truncation=True, padding=True))
     return dict(x, **{"language": language_tag})
+
+
+def preprocess_jw300(dataset, tokenizer, language_pair, language_mapping, direction: str):
+    def split_text(x, direction: str):
+        if direction == "src":
+            return {"text": x["text_old"].split("\t")[0].strip() if len(x["text_old"].split("\t")) > 1 else None}
+        elif direction == "trg":
+            return {"text": x["text_old"].split("\t")[1].strip() if len(x["text_old"].split("\t")) > 1 else None}
+        else:
+            sys.exit("Direction has to be src or trg.")
+
+    new_dataset = (dataset.map(lambda x: split_text(x, direction)).remove_columns(["text_old"]))
+    new_dataset = new_dataset.filter(lambda example: example['text'] is not None)
+
+    if direction == "src":
+        new_dataset = new_dataset.add_column("language", [language_pair.split("_")[0]] * len(new_dataset))
+    elif direction == "trg":
+        new_dataset = new_dataset.add_column("language", [language_pair.split("_")[1]] * len(new_dataset))
+
+    new_dataset = new_dataset.map(
+        lambda x: add_language_tag_tokenizer(x, tokenizer, language_mapping)).remove_columns(["text"])
+    return new_dataset
 
 
 class JW300DataModule(BaseDataModule):
@@ -32,12 +54,11 @@ class JW300DataModule(BaseDataModule):
         super().__init__(tokenizer=self.tokenizer, *args, **kwargs)
         # TODO: Should be set automatically (coming back after restructuring)
         self.languages = languages
-
         self.files = {}
         self.data_val = []
-        self.val_collate_fn = SentenceCollator(self.tokenizer, self.language_mapping, truncation=True, padding=True)
+
         # TODO: Change after student cfg
-        self.validation_language_mapping = {}
+        self.validation_dataset_mapping = {}
 
         self.max_length = max_length
 
@@ -71,38 +92,22 @@ class JW300DataModule(BaseDataModule):
                                 data_files={key: file for key, file in self.files.items()},
                                 split=split_samples)
 
-        for index, (language_pair, language_pair_dataset) in enumerate(zip(self.files.keys(), datasets)):
-            # TODO: Change after student cfg?
-            self.validation_language_mapping[index] = language_pair
+        index = 0
+        # Is being applied to ALL datasets, but should only be applied to corresponding task dataset
+        # TODO: Change this behaviour
+        for language_pair, language_pair_dataset in zip(self.files.keys(), datasets):
+            language_pair_dataset = language_pair_dataset.rename_column("text", "text_old")
 
-            language_pair_dataset = language_pair_dataset.add_column(
-                "label", range(len(language_pair_dataset))
-            ).rename_column("text", "text_old")
-
-            src = (
-                language_pair_dataset.map(lambda x: {"text": x["text_old"].split("\t")[0].strip() if len(x["text_old"].split("\t")) > 1 else None})
-                    .remove_columns(["text_old"])
-            )
-            src = src.filter(lambda example: example['text'] is not None)
-            src = src.add_column("language", [self.language_mapping["lang_id"][language_pair.split("_")[0]]] * len(src))
-
-            trg = (
-                language_pair_dataset.map(lambda x: {"text": x["text_old"].split("\t")[1].strip() if len(x["text_old"].split("\t")) > 1 else None})
-                    .remove_columns(["text_old"])
-            )
-            trg = trg.filter(lambda example: example['text'] is not None)
-            trg = trg.add_column("language", [self.language_mapping["lang_id"][language_pair.split("_")[1]]] * len(trg))
+            src = preprocess_jw300(language_pair_dataset, self.tokenizer, language_pair, self.language_mapping, "src")
+            trg = preprocess_jw300(language_pair_dataset, self.tokenizer, language_pair, self.language_mapping, "trg")
 
             if stage in (None, "val"):
-                self.data_val.append(concatenate_datasets([src, trg]))
+                for task_name in self.eval_cfg.keys():
+                    # TODO: Change after student cfg?
+                    self.validation_dataset_mapping[index] = {"languages": language_pair,
+                                                              "task": task_name}
+                    index += 1
 
-    def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
-        dataloader_args = {"batch_size": self.batch_size,
-                           "num_workers": self.num_workers,
-                           "pin_memory": self.pin_memory,
-                           "collate_fn": self.val_collate_fn
-                           if self.val_collate_fn is not None
-                           else self.collate_fn,
-                           "shuffle": False}
-
-        return [DataLoader(dataset=data, **dataloader_args) for data in self.data_val]
+                    self.val_collate_fn.append(hydra.utils.instantiate(self.val_collate_fn_dict[task_name],
+                                                                       tokenizer=self.tokenizer)())
+                    self.data_val.append(concatenate_datasets([src, trg]))

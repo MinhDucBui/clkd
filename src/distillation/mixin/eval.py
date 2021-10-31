@@ -149,7 +149,8 @@ class EvalMixin:
         if self.evaluation.apply.batch is not None:
             batch = self.evaluation.apply.batch(batch)
         # Changed: From self(batch) -> self.model[model_idx](**batch) as we have multiple models
-        outputs = self.model[model_idx].forward(**batch)
+        # Use Batch without Labels
+        outputs = self.model[model_idx].forward(**{key: value for key, value in batch.items() if key not in ["labels"]})
         if self.evaluation.apply.outputs is not None:
             outputs = self.evaluation.apply.outputs(outputs, batch)
 
@@ -157,8 +158,7 @@ class EvalMixin:
             if getattr(v, "on_step", False):
                 kwargs = self.prepare_metric_input(outputs, batch, v.compute)
                 v["metric"](**kwargs)
-                self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
-
+                #self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
         return self.collect_step_output(outputs, batch)
 
     def eval_epoch_end(self, stage: str, step_outputs: list) -> dict:
@@ -174,13 +174,17 @@ class EvalMixin:
             dict: flattened outputs from evaluation steps
         """
 
-        # if self.metrics is not None:
-        outputs = flatten_dict(step_outputs)
-        if self.evaluation.apply.step_outputs is not None:
-            outputs = self.evaluation.apply.step_outputs(outputs)
+        outputs = None
         for k, v in self.metrics.items():
-            #if getattr(v, "on_step", False):
-            #    self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
+            if getattr(v, "on_epoch", False):
+                outputs = flatten_dict(step_outputs)
+                if self.evaluation.apply.step_outputs is not None:
+                    outputs = self.evaluation.apply.step_outputs(outputs)
+                break
+
+        for k, v in self.metrics.items():
+            if getattr(v, "on_step", False):
+                self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
             if getattr(v, "on_epoch", False):
                 kwargs: dict = self.prepare_metric_input(outputs, None, v.compute)
                 self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True)
@@ -198,13 +202,3 @@ class EvalMixin:
     def test_epoch_end(self, test_step_outputs: list):
         return self.eval_epoch_end("test", test_step_outputs)
 
-# import torchmetrics
-# import torch
-# x = torch.randn(1000, 300)
-# y = torch.randn(1000, 300)
-# p = x @ y.T
-# label = torch.zeros(1000, 1000).long()
-# idx = torch.arange(1000).repeat(1000, 1)
-# idx.fill_diagonal_(1)
-# mrr = torchmetrics.RetrievalMRR()
-# mrr(p, label, idx) # weird, easier with functional interface

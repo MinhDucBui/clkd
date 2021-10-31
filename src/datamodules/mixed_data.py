@@ -3,12 +3,14 @@ from torch.utils.data.dataloader import DataLoader
 from pathlib import Path
 from src.datamodules.base import BaseDataModule
 import hydra
+from omegaconf import DictConfig
 
 
 class MixedDataModule(BaseDataModule):
     def __init__(
             self,
-            data_cfg,
+            data_cfg: DictConfig,
+            eval_cfg: Optional[DictConfig],
             s_tokenizer: list,
             t_tokenizer,
             train_languages,
@@ -36,13 +38,14 @@ class MixedDataModule(BaseDataModule):
                                                         language_mapping=language_mapping,
                                                         )
         self.val_datamodule = hydra.utils.instantiate(data_cfg.val,
+                                                      eval_cfg=eval_cfg,
                                                       s_tokenizer=s_tokenizer,
                                                       t_tokenizer=t_tokenizer,
                                                       languages=val_languages,
                                                       language_mapping=language_mapping,
                                                       )
         # TODO: Too much hardcoded. Generalize.
-        self.validation_language_mapping = self.val_datamodule.validation_language_mapping
+        self.validation_dataset_mapping = self.val_datamodule.validation_dataset_mapping
 
     def prepare_data(self):
         self.train_datamodule.prepare_data()

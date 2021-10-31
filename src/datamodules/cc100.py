@@ -31,7 +31,7 @@ class CC100DataModule(BaseDataModule):
     ):
 
         # TODO: Different Tokenizer for student/teacher
-        super().__init__(tokenizer=t_tokenizer,*args, **kwargs)
+        super().__init__(tokenizer=t_tokenizer, *args, **kwargs)
 
         self.language_mapping = language_mapping
         self.languages = languages
@@ -102,5 +102,4 @@ class CC100DataModule(BaseDataModule):
         # TODO: This Part should happen in Collator?
         tokenized_dataset = dataset.map(
             lambda x: add_language_tag_tokenizer(x, self.tokenizer, self.language_mapping))
-
         return tokenized_dataset

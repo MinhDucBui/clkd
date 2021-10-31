@@ -11,10 +11,9 @@ def add_language_tag_tokenizer(x, tokenizer, language_mapping):
 
 class SentenceCollator:
     def __init__(
-            self, tokenizer, language_mapping, **kwargs,
+            self, tokenizer, **kwargs,
     ):
         self.tokenizer: PreTrainedTokenizerBase = tokenizer
-        self.language_mapping = language_mapping
         self.kwargs: dict = kwargs
 
     def __call__(self, inputs) -> BatchEncoding:

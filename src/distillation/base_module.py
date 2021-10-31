@@ -93,6 +93,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             val_languages = list(k for k, _ in itertools.groupby(val_languages))
             self.datamodule = MixedDataModule(self.data_cfg,
                                               train_languages=list(self.language_mapping["id_lang"].values()),
+                                              eval_cfg=self.evaluation_cfg,
                                               val_languages=val_languages,
                                               language_mapping=self.language_mapping,
                                               s_tokenizer=self.student_tokenizers,
@@ -164,18 +165,17 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         return output
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-
-        language_pair = self.datamodule.validation_language_mapping[dataloader_idx].split("_")
-        models_cfg = [single_model for single_model in self.validation_mapping if
-                      single_model["dataset"] == language_pair]
+        language_pair = self.datamodule.validation_dataset_mapping[dataloader_idx]["languages"].split("_")
+        task_name = self.datamodule.validation_dataset_mapping[dataloader_idx]["task"]
+        models_cfg = [single_model for single_model in self.validation_mapping
+                      if single_model["dataset"] == language_pair and single_model["task_name"] == task_name]
         val_outputs = {}
-
         for model_cfg in models_cfg:
             logger_name = model_cfg["logger_name"]
             if logger_name not in model_cfg.keys():
                 val_outputs[logger_name] = {}
 
-            model_tuple = [model_cfg["model_idx"], model_cfg["model_language"].split("_")]
+            model_tuple = [model_cfg["model_idx"], model_cfg["current_language"]]
 
             if model_cfg["eval_with"] != "":
                 model_eval_tuples = model_cfg["eval_with"]
@@ -197,18 +197,17 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                                              stage=logger_name,
                                              model_idx=current_model_tuple[0])
                 val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
-
         return val_outputs
 
     def validation_epoch_end(self, validation_step_outputs: list):
         for value in validation_step_outputs:
             output_step = []
-            logger_name = list(value[0].keys())[0]
-            for item_ in value:
-                output_step.append(item_[logger_name])
-            for cfg in self.validation_mapping:
-                if cfg["logger_name"] == logger_name:
-                    # TODO: Change Model ID
-                    self.evaluation = cfg["cfg"]
-                    self.metrics = self.evaluation.metrics
-            self.eval_epoch_end(logger_name, output_step)
+            for logger_name in list(value[0].keys()):
+                for item_ in value:
+                    output_step.append(item_[logger_name])
+                for cfg in self.validation_mapping:
+                    if cfg["logger_name"] == logger_name:
+                        # TODO: Change Model ID
+                        self.evaluation = cfg["cfg"]
+                        self.metrics = self.evaluation.metrics
+                self.eval_epoch_end(logger_name, output_step)

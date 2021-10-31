@@ -2,7 +2,7 @@ _recursive_: False
 _target_: src.datamodules.jw300.JW300DataModule
 
 defaults:
-  - /collate_fn: sentence
+  - /collate_fn: padding
 
 max_length: 1000
 data_dir: ${jw300}

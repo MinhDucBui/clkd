@@ -56,17 +56,18 @@ students:
   # - ((student_1, ss), (student_0, ss))
 
   evaluation:
+    #retrieval: null
     retrieval:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
         - ((student_0, mn), (student_0, ss))
         - ((student_1, ht), (student_1, ss))
 
-    mlm: null
-    #mlm:
-    #  aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
-    #  evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-    #    - ((student_0, ht), (student_0, ss))
-    #    - ((student_1, mn), (student_1, ss))
+    # mlm: null
+    mlm:
+      aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
+      evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
+        - ((student_0, mn), (student_0, ss))
+        - ((student_1, ht), (student_1, ss))
 
 
 datamodule:

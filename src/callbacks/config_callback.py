@@ -58,6 +58,5 @@ def config_callback(cfg: DictConfig, cb_cfg: DictConfig) -> DictConfig:
     .. seealso:: :py:func:`src.utils.hydra.expand`, :py:func:`src.utils.hydra.instantiate_and_apply`, :py:func:`src.datamodule.utils.load_dataset`
     """
     for key in cb_cfg:
-        print(type(key))
         cfg = hydra.utils.call(cb_cfg.get(key), cfg=cfg, cfg_key=key)
     return cfg

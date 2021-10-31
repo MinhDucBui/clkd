@@ -24,6 +24,8 @@ def expand(
         - Shared config reflects all configuration excluding set :obj:`keys`.
 
     Args:
+        cfg:
+        cfg_key:
         keys (:obj:`Union[str, list[str])`):
             Keys that comprise dedicated configuration for which shared config will be merged.
 
@@ -68,9 +70,10 @@ def expand(
         keys = [keys]
     # Support Regex Strings
     keys_regex = [re.compile(key) for key in keys]
-    shared_keys = [key for key in OmegaConf.select(cfg, cfg_key).keys() if not any(compiled_reg.match(key) for compiled_reg in keys_regex)]
-    keys = [key for key in OmegaConf.select(cfg, cfg_key).keys() if any(compiled_reg.match(key) for compiled_reg in keys_regex)]
-    # shared_keys = [key for key in cfg.keys() if key not in keys]
+    shared_keys = [key for key in OmegaConf.select(cfg, cfg_key).keys()
+                   if not any(compiled_reg.match(key) for compiled_reg in keys_regex)]
+    keys = [key for key in OmegaConf.select(cfg, cfg_key).keys()
+            if any(compiled_reg.match(key) for compiled_reg in keys_regex)]
     cfg_excl_keys = OmegaConf.masked_copy(OmegaConf.select(cfg, cfg_key), shared_keys)
     for key in keys:
         if key in OmegaConf.select(cfg, cfg_key):
