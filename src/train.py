@@ -40,7 +40,6 @@ def train(config: DictConfig) -> Optional[float]:
             elif cb_name == "config_callback":
                 log.info(f"Instantiating config callback for <{cb_name}>")
                 config = config_callback(config, cb_conf)
-    utils.print_config(config, resolve=True)
 
     # Init Module
     distillation: LightningModule = BaseModule(cfg=config)

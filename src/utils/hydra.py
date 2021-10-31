@@ -9,10 +9,10 @@ import re
 
 
 def expand(
-        cfg: DictConfig,
-        cfg_key,
-        keys=["train", "val", "test"],
-        gen_keys=False
+    cfg: DictConfig,
+    cfg_key: str,
+    keys: Union[str, list[str]] = ["train", "val", "test"],
+    gen_keys: bool = False,
 ) -> DictConfig:
     """Expands partial configuration of `keys` in `cfg` with the residual configuration.
 
@@ -80,7 +80,6 @@ def expand(
     with open_dict(cfg):
         for key in shared_keys:
             OmegaConf.select(cfg, cfg_key).pop(key)
-    print(cfg.students.individual)
     return cfg
 
 

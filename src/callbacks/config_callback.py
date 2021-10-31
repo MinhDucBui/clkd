@@ -58,8 +58,6 @@ def config_callback(cfg: DictConfig, cb_cfg: DictConfig) -> DictConfig:
     .. seealso:: :py:func:`src.utils.hydra.expand`, :py:func:`src.utils.hydra.instantiate_and_apply`, :py:func:`src.datamodule.utils.load_dataset`
     """
     for key in cb_cfg:
-        #processed_cfg = hydra.utils.call(cb_cfg.get(key), OmegaConf.select(cfg, key))
+        print(type(key))
         cfg = hydra.utils.call(cb_cfg.get(key), cfg=cfg, cfg_key=key)
-        print(cfg.students.individual)
-    print(cfg)
     return cfg
