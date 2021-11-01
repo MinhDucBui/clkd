@@ -206,7 +206,7 @@ def get_subset_dict(full_set: dict, idx: torch.Tensor):
     subset = {}
     for key, value in full_set.items():
         # TODO: Fix for now. Wait for Marlena
-        if key == "hidden_states":
+        if key == "hidden_states" or key == "attentions":
             continue
         subset[key] = value[idx]
 

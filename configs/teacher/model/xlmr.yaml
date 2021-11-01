@@ -24,3 +24,5 @@ cfg:
   type_vocab_size: 2
   use_cache: true
   vocab_size: 30522
+  output_hidden_states: True
+  output_attentions: True

@@ -12,6 +12,7 @@ from src.utils.mappings import create_mapping
 from transformers.tokenization_utils_base import BatchEncoding
 from src.datamodules.mixed_data import MixedDataModule
 import itertools
+from typing import Dict, Any
 
 log = utils.get_logger(__name__)
 
@@ -120,7 +121,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                 full_batch = keep_only_model_forward_arguments(self._teacher,
                                                                batch,
                                                                remove_additional_keys=["labels"])
-
+                # MaskedLMOutput --> OrderedDict
                 self.teacher_outputs = self._teacher.forward(**full_batch)  # (bs, seq_length, voc_size)
 
         model_languages = get_model_language(model_idx, self.student_mapping)
@@ -131,8 +132,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         # Get corresponding Teacher Outputs
         subset_teacher_output = get_subset_dict(self.teacher_outputs, idx)
 
-        # Get Loss
         student_outputs = self.model[model_idx](**cleaned_batch)  # (bs, seq_length, voc_size)
+
+        # Get Loss
         loss = self.loss[model_idx](student_outputs, subset_teacher_output, subset_batch["labels"])
 
         # TODO: Model ID

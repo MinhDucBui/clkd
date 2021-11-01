@@ -1,0 +1,9 @@
+_target_: src.loss.TinyBertLoss
+temperature: 4.0
+alpha: 0.5
+
+loss_weighting:
+  emb_loss_param: 1
+  hidden_loss_param: 1
+  att_loss_param: 1
+  kd_loss_param: 1

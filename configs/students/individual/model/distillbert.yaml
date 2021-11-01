@@ -17,3 +17,5 @@ cfg:
   qa_dropout: 0.1
   seq_classif_dropout: 0.2
   pad_token_id: 0
+  output_hidden_states: True
+  output_attentions: True

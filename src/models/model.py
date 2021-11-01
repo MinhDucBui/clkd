@@ -21,7 +21,6 @@ def initialize_teacher_or_student(cfg):
     OmegaConf.set_struct(cfg, True)
     with open_dict(cfg):
         OmegaConf.update(cfg.model, "cfg.vocab_size", tokenizer.vocab_size)
-
     model, architecture_cfg = hydra.utils.instantiate(cfg.model)
     # If not max sequence length is given in tokenizer
     if tokenizer.model_max_length > int(1e20):
@@ -30,14 +29,27 @@ def initialize_teacher_or_student(cfg):
     return tokenizer, model
 
 
-def get_automodel(pretrained_model_name_or_path, use_pretrained_weights, cfg=None):
+def get_automodel(pretrained_model_name_or_path, use_pretrained_weights, output_hidden_states, output_attentions,
+                  cfg=None, **kwargs):
+
     if use_pretrained_weights:
-        architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path)
-        return AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path, output_hidden_states=True), architecture_cfg
+        architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path,
+                                                      output_hidden_states=output_hidden_states,
+                                                      output_attentions=output_attentions,
+                                                      **kwargs
+                                                      )
+        model = AutoModelForMaskedLM.from_pretrained(pretrained_model_name_or_path,
+                                                     output_hidden_states=output_hidden_states,
+                                                     output_attentions=output_attentions,
+                                                     **kwargs)
+        return model, architecture_cfg
     else:
-        architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+        architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path,
+                                                      output_hidden_states=output_hidden_states,
+                                                      output_attentions=output_attentions,
+                                                      **kwargs
+                                                      )
         architecture_cfg.vocab_size = cfg.vocab_size
-        architecture_cfg.output_hidden_states = True
         return AutoModelForMaskedLM.from_config(architecture_cfg), architecture_cfg
 
 

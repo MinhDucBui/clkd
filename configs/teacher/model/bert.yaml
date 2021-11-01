@@ -21,5 +21,7 @@ cfg:
   position_embedding_type: 'absolute'
   use_cache: True
   classifier_dropout: None
+  output_hidden_states: True
+  output_attentions: True
 
 
