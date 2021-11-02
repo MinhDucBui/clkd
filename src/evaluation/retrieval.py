@@ -1,5 +1,4 @@
 import torch
-from src.utils.utils import get_model_language, name_model_for_logger
 
 
 def mrr(preds: torch.Tensor) -> torch.Tensor:

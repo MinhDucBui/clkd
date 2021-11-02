@@ -1,6 +1,5 @@
 from typing import Optional, List, Union
 from torch.utils.data.dataloader import DataLoader
-from pathlib import Path
 from src.datamodules.base import BaseDataModule
 import hydra
 from omegaconf import DictConfig
@@ -21,15 +20,9 @@ class MixedDataModule(BaseDataModule):
     ):
         # TODO: Change to corresponding Tokenizer. For now, use teacher tokenizer.
         self.tokenizer = t_tokenizer
-        self.data_dir = None
-        self.collate_fn = None
 
         # see BaseDataModule
-        super().__init__(tokenizer=self.tokenizer, data_dir="None", collate_fn=None, *args, **kwargs)
-        # TODO: Should be set automatically (coming back after restructuring)
-        self.pairs_of_languages = [["ss", "ht"], ["ss", "mn"]]
-        # TODO: Move to cfg
-        self.data_dir = Path("C://Users//mducb//Desktop//Master Thesis//project//clkd/data//JW300")
+        super().__init__(tokenizer=self.tokenizer, *args, **kwargs)
 
         self.train_datamodule = hydra.utils.instantiate(data_cfg.train,
                                                         s_tokenizer=s_tokenizer,

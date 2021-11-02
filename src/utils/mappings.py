@@ -4,6 +4,14 @@ from src.utils.utils import name_model_for_logger
 
 
 def create_mapping(students_cfg):
+    """Create mappings necessary for our distillation module.
+
+    Args:
+        students_cfg:
+
+    Returns:
+
+    """
     language_mapping = create_language_mapping(students_cfg.individual)
     student_mapping = create_model_mapping(students_cfg.individual)
     validation_mapping = create_validation_mapping(students_cfg.evaluation, student_mapping, stage="val")
@@ -11,6 +19,14 @@ def create_mapping(students_cfg):
 
 
 def create_model_mapping(students_model_cfg):
+    """Map each model to their corresponding id (order in the cfg file) and their model language.
+
+    Args:
+        students_model_cfg:
+
+    Returns:
+
+    """
     mapping = {"model_id": {}, "id_model": {}}
     index = 0
     for key in list(students_model_cfg.keys()):
@@ -23,6 +39,14 @@ def create_model_mapping(students_model_cfg):
 
 
 def create_language_mapping(students_model_cfg):
+    """Map each language to an ID.
+
+    Args:
+        students_model_cfg:
+
+    Returns:
+
+    """
     mapping = {"lang_id": {}, "id_lang": {}}
     languages = []
     for key in sorted(list(students_model_cfg.keys())):
@@ -38,12 +62,23 @@ def create_language_mapping(students_model_cfg):
 
 
 def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
-    """Format: language_pair (distill type)/task/metric/dataset/language, e.g. ss_ht (bilingual)/mlm/perplexity/ss.
+    """Create instructions on which model is being validated on which task and language with corresponding eval cfg.
+
+    Format: {"model_name": model name, "model_language": corresponding model languages,
+             "model_idx": corresponding model ID,
+             "eval_with", If another model should also be evaluted with the current model,
+             "task_name": the task name, "dataset": the corresponding dataset,
+             "metric_name": the metric, e.g. perplexity,
+             "cfg": evaluation instructions (eval_cfg),
+             "current_language": the language that the model is being evaluated on
+                                 (e.g. only english, model can be multilingual
+            }
+
 
     Args:
-        stage:
-        model_mapping:
         evaluation_cfg:
+        model_mapping:
+        stage:
 
     Returns:
 

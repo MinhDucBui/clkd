@@ -1,22 +1,12 @@
 from typing import Optional
 from datasets import load_dataset, interleave_datasets
 import os.path
-from src.utils.utils import get_logger, download_file, decompress_xz
+from src.utils.utils import get_logger, download_file, decompress_xz, add_language_tag_tokenizer, add_language_tag
 from src.datamodules.base import BaseDataModule
 
 log = get_logger(__name__)
 
 SEED = 42
-
-
-def add_language_tag(dataset, language):
-    return dataset.map(lambda x: dict(x, **{"language": language}))
-
-
-def add_language_tag_tokenizer(x, tokenizer, language_mapping):
-    language_tag = [language_mapping["lang_id"][x["language"]]]
-    x = dict(tokenizer(x["text"], truncation=True, padding=True))
-    return dict(x, **{"language": language_tag})
 
 
 class CC100DataModule(BaseDataModule):

@@ -14,6 +14,14 @@ import requests
 import lzma, shutil
 
 
+def add_language_tag(dataset, language):
+    return dataset.map(lambda x: dict(x, **{"language": language}))
+
+def add_language_tag_tokenizer(x, tokenizer, language_mapping):
+    language_tag = [language_mapping["lang_id"][x["language"]]]
+    x = dict(tokenizer(x["text"], truncation=True, padding=True))
+    return dict(x, **{"language": language_tag})
+
 
 def initialize_evaluation_cfg(evaluation_cfg):
     delete_tasks = []

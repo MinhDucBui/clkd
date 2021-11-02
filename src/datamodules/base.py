@@ -55,7 +55,7 @@ class BaseDataModule(LightningDataModule, ABC):
     ):
         super().__init__()
 
-        self.data_dir = str(Path(data_dir))
+        self.data_dir = str(Path(data_dir)) if data_dir is not None else None
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory

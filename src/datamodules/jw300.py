@@ -4,36 +4,10 @@ from datasets.arrow_dataset import concatenate_datasets
 from datasets.load import load_dataset
 from pathlib import Path
 from src.datamodules.base import BaseDataModule
+from src.utils.utils import add_language_tag_tokenizer
 import sys
 import hydra
 
-
-def add_language_tag_tokenizer(x, tokenizer, language_mapping):
-    language_tag = [language_mapping["lang_id"][x["language"]]]
-    x = dict(tokenizer(x["text"], truncation=True, padding=True))
-    return dict(x, **{"language": language_tag})
-
-
-def preprocess_jw300(dataset, tokenizer, language_pair, language_mapping, direction: str):
-    def split_text(x, direction: str):
-        if direction == "src":
-            return {"text": x["text_old"].split("\t")[0].strip() if len(x["text_old"].split("\t")) > 1 else None}
-        elif direction == "trg":
-            return {"text": x["text_old"].split("\t")[1].strip() if len(x["text_old"].split("\t")) > 1 else None}
-        else:
-            sys.exit("Direction has to be src or trg.")
-
-    new_dataset = (dataset.map(lambda x: split_text(x, direction)).remove_columns(["text_old"]))
-    new_dataset = new_dataset.filter(lambda example: example['text'] is not None)
-
-    if direction == "src":
-        new_dataset = new_dataset.add_column("language", [language_pair.split("_")[0]] * len(new_dataset))
-    elif direction == "trg":
-        new_dataset = new_dataset.add_column("language", [language_pair.split("_")[1]] * len(new_dataset))
-
-    new_dataset = new_dataset.map(
-        lambda x: add_language_tag_tokenizer(x, tokenizer, language_mapping)).remove_columns(["text"])
-    return new_dataset
 
 
 class JW300DataModule(BaseDataModule):
@@ -52,18 +26,15 @@ class JW300DataModule(BaseDataModule):
         self.language_mapping = language_mapping
         # see BaseDataModule
         super().__init__(tokenizer=self.tokenizer, *args, **kwargs)
-        # TODO: Should be set automatically (coming back after restructuring)
         self.languages = languages
         self.files = {}
         self.data_val = []
 
-        # TODO: Change after student cfg
         self.validation_dataset_mapping = {}
-
         self.max_length = max_length
 
     def prepare_data(self):
-        # TODO: What if other language shorts?
+        # TODO: OPUS is down...
         for pair_language in self.languages:
             path_folder = Path(self.data_dir) / Path("_".join(pair_language))
             Path.mkdir(path_folder, parents=True, exist_ok=True)
@@ -111,3 +82,25 @@ class JW300DataModule(BaseDataModule):
                     self.val_collate_fn.append(hydra.utils.instantiate(self.val_collate_fn_dict[task_name],
                                                                        tokenizer=self.tokenizer)())
                     self.data_val.append(concatenate_datasets([src, trg]))
+
+
+def preprocess_jw300(dataset, tokenizer, language_pair, language_mapping, direction: str):
+    def split_text(x, direction: str):
+        if direction == "src":
+            return {"text": x["text_old"].split("\t")[0].strip() if len(x["text_old"].split("\t")) > 1 else None}
+        elif direction == "trg":
+            return {"text": x["text_old"].split("\t")[1].strip() if len(x["text_old"].split("\t")) > 1 else None}
+        else:
+            sys.exit("Direction has to be src or trg.")
+
+    new_dataset = (dataset.map(lambda x: split_text(x, direction)).remove_columns(["text_old"]))
+    new_dataset = new_dataset.filter(lambda example: example['text'] is not None)
+
+    if direction == "src":
+        new_dataset = new_dataset.add_column("language", [language_pair.split("_")[0]] * len(new_dataset))
+    elif direction == "trg":
+        new_dataset = new_dataset.add_column("language", [language_pair.split("_")[1]] * len(new_dataset))
+
+    new_dataset = new_dataset.map(
+        lambda x: add_language_tag_tokenizer(x, tokenizer, language_mapping)).remove_columns(["text"])
+    return new_dataset

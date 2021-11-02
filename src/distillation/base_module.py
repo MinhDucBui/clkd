@@ -87,6 +87,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         else:
             val_languages = []
+            # Get all languages that are needed for validation
             for task_name, task_cfg in self.evaluation_cfg.items():
                 for evaluate_with_tuple in task_cfg["evaluate_with"]:
                     val_languages.append([evaluate_model[1] for evaluate_model in evaluate_with_tuple])
@@ -106,6 +107,12 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         """Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
         In our case: One optimizer corresponds to a model.
 
+        Workflow:
+        -> If first iteration, then get the teacher outputs for current batch and save them for next iterations
+        -> Get the language of the model and get the corresponding samples that are in the model (student) language
+        -> Get corresponding Teacher Outputs (in the current model language)
+        -> Calculate Loss and Log
+
         Args:
             batch:
             batch_idx:
@@ -115,6 +122,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         """
         model_idx = optimizer_idx
+
+        # If first iteration, then get the teacher outputs for current batch and save them for next iterations
         if model_idx == 0:
             # Calculate Teacher Outputs (don't need gradient)
             with torch.no_grad():
@@ -124,29 +133,27 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                 # MaskedLMOutput --> OrderedDict
                 self.teacher_outputs = self._teacher.forward(**full_batch)  # (bs, seq_length, voc_size)
 
+        # Get the language of the model and get the corresponding samples that are in the model (student) language
         model_languages = get_model_language(model_idx, self.student_mapping)
         cleaned_batch, subset_batch, idx = get_subset_cleaned_batch(self.model[model_idx], model_languages, batch,
                                                                     self.language_mapping,
                                                                     remove_additional_keys=["labels"])
 
-        # Get corresponding Teacher Outputs
+        # Get corresponding Teacher Outputs (in the current model language)
         subset_teacher_output = get_subset_dict(self.teacher_outputs, idx)
 
         student_outputs = self.model[model_idx](**cleaned_batch)  # (bs, seq_length, voc_size)
 
-        # Get Loss
+        # Calculate Loss and Log
         loss = self.loss[model_idx](student_outputs, subset_teacher_output, subset_batch["labels"])
 
-        # TODO: Model ID
         model_name_logger = name_model_for_logger(model_languages)
         tqdm_dict = {model_name_logger + "/" + "train" + "/" + "_".join(model_languages) + '/train_loss': loss}
-
         output = {
             'loss': loss,
             'progress_bar': tqdm_dict,
             'log': tqdm_dict
         }
-
         for key, value in output["log"].items():
             self.log(key, value)
 
@@ -167,24 +174,53 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         return output
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        """Each validation step has multiple validation dataloaders (indexed with dataloader_idx).
+        self.validation_mapping contains information about which model is being validated on which task and dataset
+        with the corresponding evaluation instructions.
+
+        Workflow:
+        -> Get language and task for current validation set with index dataloader_idx
+        -> Go into self.validation_mapping and get which model should be validated (given language and task from
+        previous step) and get the evaluation instructions.
+        -> Loop through all models that are being validated
+            -> Check for "eval_with" (another model validated with the current model, e.g. retrieval task)
+            -> Execute evaluation instructions for the model (and eval_with if it exists)
+
+        Args:
+            batch:
+            batch_idx:
+            dataloader_idx:
+
+        Returns:
+
+        """
+
+        val_outputs = {}
+
+        # Get language and task for current validation set with index dataloader_idx
         language_pair = self.datamodule.validation_dataset_mapping[dataloader_idx]["languages"].split("_")
         task_name = self.datamodule.validation_dataset_mapping[dataloader_idx]["task"]
+
+        # Go into self.validation_mapping and get which model should be validated (given language and task from
+        # previous step) and get the evaluation instructions.
         models_cfg = [single_model for single_model in self.validation_mapping
                       if single_model["dataset"] == language_pair and single_model["task_name"] == task_name]
-        val_outputs = {}
+
         for model_cfg in models_cfg:
+
             logger_name = model_cfg["logger_name"]
             if logger_name not in model_cfg.keys():
                 val_outputs[logger_name] = {}
-
             model_tuple = [model_cfg["model_idx"], model_cfg["current_language"]]
 
+            # Check for "eval_with" (another model validated with the current model, e.g. retrieval task)
             if model_cfg["eval_with"] != "":
                 model_eval_tuples = model_cfg["eval_with"]
                 model_eval_tuples = [[eval_tuple[0], eval_tuple[1].split("_")] for eval_tuple in model_eval_tuples]
             else:
                 model_eval_tuples = [None, None]
 
+            # Execute evaluation instructions for the model (and eval_with if it exists)
             for current_model_tuple in [model_tuple] + model_eval_tuples:
                 cleaned_batch, _, _ = get_subset_cleaned_batch(self.model[current_model_tuple[0]],
                                                                current_model_tuple[1],
@@ -202,11 +238,32 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         return val_outputs
 
     def validation_epoch_end(self, validation_step_outputs: list):
+        """Aggregate all validation step outputs and calculate metric (if epoch_end=True)
+
+        Workflow:
+        -> Loop through all validation step outputs. In each step, outputs for different metrics could be
+           available. E.g. step one has perplexity for language hh and mn on the validation dataset (hh, mn)
+            -> Loop through the outputs for each metric
+                -> Get the corresponding evaluation instructions and execute them
+
+        Args:
+            validation_step_outputs:
+
+        Returns:
+
+        """
+
+        # Loop through all validation step outputs. In each step, outputs for different metrics could be
+        # available. E.g. step one has perplexity for language hh and mn on the validation dataset (hh, mn)
         for value in validation_step_outputs:
             output_step = []
+
+            # Loop through the outputs for each metric
             for logger_name in list(value[0].keys()):
                 for item_ in value:
                     output_step.append(item_[logger_name])
+
+                # Get the corresponding evaluation instructions and execute them
                 for cfg in self.validation_mapping:
                     if cfg["logger_name"] == logger_name:
                         # TODO: Change Model ID

@@ -34,7 +34,7 @@ metrics:
   perplexity:
     # instructions to instantiate metric, preferrably torchmetrics.Metric
     metric:
-      _target_: src.evaluation.metrics.Perplexity
+      _target_: src.evaluation.mlm.Perplexity
     # either on_step: true or on_epoch: true
     on_step: true
     compute:
