@@ -1,0 +1,8 @@
+defaults:
+  - model: automodel
+  - tokenizer: autotokenizer
+  - loss: kdloss
+  - optimizer: adamW
+  - lr_scheduler: linear_warmup
+
+#languages: ???

@@ -1,0 +1,10 @@
+config_callback:
+  # key in your config
+  # i.e. config.datamodule.dataset_cfg in my experiments
+  students.individual:
+    # for this config
+    # do config callback as specified below
+    _recursive_: false
+    _target_: src.utils.hydra.expand
+    keys: ["student_.*"]
+    gen_keys: false

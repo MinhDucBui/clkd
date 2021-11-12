@@ -5,13 +5,103 @@ import torch
 import pytorch_lightning as pl
 import rich.syntax
 import rich.tree
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning.utilities import rank_zero_only
 from pathlib import Path
 import os.path
 import sys
 import requests
 import lzma, shutil
+
+
+def add_language_tag(dataset, language):
+    return dataset.map(lambda x: dict(x, **{"language": language}))
+
+def add_language_tag_tokenizer(x, tokenizer, language_mapping):
+    language_tag = [language_mapping["lang_id"][x["language"]]]
+    x = dict(tokenizer(x["text"], truncation=True, padding=True))
+    return dict(x, **{"language": language_tag})
+
+
+def initialize_evaluation_cfg(evaluation_cfg):
+    delete_tasks = []
+    for task_name, task in evaluation_cfg.items():
+        if task is None:
+            delete_tasks.append(task_name)
+            continue
+        for index, model_eval_with in enumerate(task["evaluate_with"]):
+            new_tuple = []
+            model_eval_with = model_eval_with.replace(" ", "")
+            splitted_tuple = tuple(map(str, model_eval_with.strip('()').split('),(')))
+            for single_tuple in splitted_tuple:
+                single_tuple = tuple(map(str, single_tuple.strip('()').split(',')))
+                new_tuple.append(single_tuple)
+            task["evaluate_with"][index] = tuple(new_tuple)
+
+    OmegaConf.set_struct(evaluation_cfg, True)
+    with open_dict(evaluation_cfg):
+        for delete_key in delete_tasks:
+            del evaluation_cfg[delete_key]
+    return evaluation_cfg
+
+
+def append_torch_in_dict(dict_to_add, dict_to_extend):
+    for key, value in dict_to_add.items():
+        if key not in dict_to_extend.keys():
+            dict_to_extend[key] = dict_to_add[key]
+        else:
+            dict_to_extend[key] = torch.cat((dict_to_extend[key], dict_to_add[key]), dim=0)
+    return dict_to_extend
+
+
+# TODO: Is redundant when we have new student cfg structure
+def get_corresponding_language_pairs(language_mapping):
+    """Format: [[l1, l2, ...], [l1], ...]
+
+    Returns:
+
+    """
+    language_pairs = []
+    for value in language_mapping.values():
+        if value[1] == "src":
+            language_pairs += [[value[0], value_2[0]] for value_2 in language_mapping["id_lang"].values() if
+                               value_2[1] != "src"]
+    return language_pairs
+
+
+# TODO: What if two student have same languages? Not unique in logger. Not allow this situation?
+def name_model_for_logger(languages):
+    if len(languages) == 1:
+        distilltype = "(monolingual)"
+    elif len(languages) == 2:
+        distilltype = "(bilingual)"
+    else:
+        distilltype = "(multilingual)"
+
+    return "_".join(languages) + distilltype
+
+
+def get_model_language(model_idx, student_mapping):
+    return student_mapping["id_model"][model_idx]["languages"]
+
+
+def get_subset_cleaned_batch(model, model_language, batch, language_mapping, remove_additional_keys=["labels"]):
+    subset_batch, idx = get_language_subset_batch(batch,
+                                                  language_mapping,
+                                                  model_language)
+    cleaned_batch = keep_only_model_forward_arguments(model,
+                                                      subset_batch,
+                                                      remove_additional_keys=remove_additional_keys)
+    return cleaned_batch, subset_batch, idx
+
+def keep_only_model_forward_arguments(model, batch, remove_additional_keys=None):
+    if remove_additional_keys is None:
+        remove_additional_keys = []
+    cleaned_batch = {key: value for key, value in batch.items() if key not in remove_additional_keys}
+    cleaned_batch = {key: value for (key, value) in cleaned_batch.items() if
+                     key in model.forward.__code__.co_varnames}
+
+    return cleaned_batch
 
 
 # Utils for Data Module
@@ -68,6 +158,27 @@ def decompress_xz(input_file):
 
 
 # Utils for Model
+def get_language_subset_batch(batch, language_mapping, model_languages):
+    """Each batch consists of samples from multiple languages, but each model corresponds to a subset of languages
+    Idea: Get only the samples that corresponds to the model's languages and get row index of the corresponding
+    samples in the batch.
+
+    Args:
+        batch:
+        language_mapping:
+        model_languages:
+
+    Returns:
+
+    """
+
+    idx = get_language_subset_index(language_mapping, batch["language"], model_languages)
+    # Get corresponding Batch
+    subset_batch = get_subset_dict(batch, idx)
+
+    return subset_batch, idx
+
+
 def get_language_subset_index(language_mapping, batch_language, model_languages):
     """Get index of samples in batch that corresponds to the model's languages.
 
@@ -81,7 +192,7 @@ def get_language_subset_index(language_mapping, batch_language, model_languages)
     """
     idx = None
     for index, single_language in enumerate(model_languages):
-        language_id = language_mapping["lang_id"][single_language][0]
+        language_id = language_mapping["lang_id"][single_language]
         subset_index = (batch_language == torch.tensor(language_id)).nonzero()[:, 0]
         if index == 0:
             idx = subset_index
@@ -102,42 +213,12 @@ def get_subset_dict(full_set: dict, idx: torch.Tensor):
     """
     subset = {}
     for key, value in full_set.items():
+        # TODO: Fix for now. Wait for Marlena
+        if key == "hidden_states" or key == "attentions":
+            continue
         subset[key] = value[idx]
 
     return subset
-
-
-def bilingual_parse_mapping_language(s_lang, language, index: int):
-    mapping_id_lang = {}
-
-    if not index:
-        index = 0
-    if isinstance(s_lang, str):
-        mapping_id_lang[index] = [s_lang + "_" + language]
-    elif isinstance(s_lang, bool):
-        pass
-    else:
-        for single_language in s_lang:
-            mapping_id_lang[index] = [single_language + "_" + language]
-            index += 1
-
-    return mapping_id_lang, index
-
-
-def monolingual_parse_mapping_language(language, prefix: str, index: int):
-    mapping_id_lang = {}
-    if not index:
-        index = 0
-    if isinstance(language, str):
-        mapping_id_lang[index] = [language, prefix]
-    elif isinstance(language, bool):
-        pass
-    else:
-        for single_language in language:
-            mapping_id_lang[index] = [single_language, prefix]
-            index += 1
-
-    return mapping_id_lang, index
 
 
 # Utils for Hydra
@@ -183,10 +264,10 @@ def extras(config: DictConfig) -> None:
         config.trainer.fast_dev_run = True
 
     # force debugger friendly configuration if <config.trainer.fast_dev_run=True>
-    if config.train.trainer.get("fast_dev_run"):
+    if config.trainer.get("fast_dev_run"):
         log.info("Forcing debugger friendly configuration! <config.trainer.fast_dev_run=True>")
         # Debuggers don't like GPUs or multiprocessing
-        if config.train.trainer.get("gpus"):
+        if config.trainer.get("gpus"):
             config.trainer.gpus = 0
         if config.datamodule.get("pin_memory"):
             config.datamodule.pin_memory = False
@@ -201,10 +282,9 @@ def extras(config: DictConfig) -> None:
 def print_config(
         config: DictConfig,
         fields: Sequence[str] = (
-                "train",
-                "distillation",
+                "trainer",
                 "teacher",
-                "student",
+                "students",
                 "datamodule",
                 "callbacks",
                 "logger",
@@ -262,10 +342,10 @@ def log_hyperparameters(
     hparams = {}
 
     # choose which parts of hydra config will be saved to loggers
-    hparams["trainer"] = config.train.trainer
-    hparams["student"] = config["student"]
+    hparams["trainer"] = config.trainer
     hparams["teacher"] = config["teacher"]
     hparams["datamodule"] = config["datamodule"]
+    hparams["students"] = config["students"]
     if "seed" in config:
         hparams["seed"] = config["seed"]
     if "callbacks" in config:

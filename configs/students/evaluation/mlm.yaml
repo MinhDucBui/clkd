@@ -1,0 +1,42 @@
+defaults:
+  - ../../collate_fn@collate_fn: mlm
+
+evaluate_with: ??? # E.g. ((0, "en"), (0, "ht")) <-> Using parallel data or (0, "en") <-> not using parallel data
+# Report per language or as one pair (always per dataset for now) Options: "single"; "pair"
+aggregate: False
+
+logger:
+  name: "mlm"
+  # Report per language or as one pair (always per dataset for now) Options: "single"; "pair"
+  aggregate_language: "single"
+
+apply:
+  batch: null  # takes (batch)
+
+  outputs:  null  # takes (outputs, batch)
+    #_target_: src.utils.hydra.partial
+    #_partial_: src.evaluation.mlm.keep_output
+
+  # takes (flattened_step_outputs: dict) where list of step_outputs are flattened
+  step_outputs: null
+
+# Which keys/attributes are supposed to be collected from `outputs` and `batch`
+step_outputs:
+  outputs:
+    - logits
+  batch: # or a list[str]
+    - labels
+
+# either metrics or val_metrics and test_metrics
+# where the latter
+metrics:
+  # name of the metric used eg for logging
+  perplexity:
+    # instructions to instantiate metric, preferrably torchmetrics.Metric
+    metric:
+      _target_: src.evaluation.mlm.Perplexity
+    # either on_step: true or on_epoch: true
+    on_step: true
+    compute:
+      logits: "outputs:logits"
+      labels: "batch:labels"

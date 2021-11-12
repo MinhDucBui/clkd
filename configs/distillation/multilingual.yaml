@@ -1,7 +1,0 @@
-# @package _global_
-distillation_type: multilingual
-
-distillation:
-  _recursive_: false
-  _target_: src.distillation.multilingual.Multilingual
-

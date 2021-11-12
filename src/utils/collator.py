@@ -1,36 +1,26 @@
-from typing import Callable, List, Optional, Tuple
-
-import numpy as np
 import torch
-from transformers import AutoTokenizer, PreTrainedTokenizer
+from transformers.tokenization_utils_base import BatchEncoding, PreTrainedTokenizerBase
+from src.utils import flatten_dict
 
 
-class SentencePairCollator:
+def add_language_tag_tokenizer(x, tokenizer, language_mapping):
+    language_tag = [language_mapping["lang_id"][x["language"]][0]]
+    x = dict(tokenizer(x["text"], truncation=True, padding=True))
+    return dict(x, **{"language": language_tag})
+
+
+class SentenceCollator:
     def __init__(
-        self,
-        model_name_or_path: str,
-        max_length: int = 128,
+            self, tokenizer, **kwargs,
     ):
-        self.model_name_or_path = model_name_or_path
-        self.max_length = max_length
-        self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
-            self.model_name_or_path
-        )
+        self.tokenizer: PreTrainedTokenizerBase = tokenizer
+        self.kwargs: dict = kwargs
 
-    def __call__(self, *args, **kwds):
-        batch = self.tokenize(*args, **kwds)
-        return batch
-
-    def tokenize(self, inputs: List[Tuple[str, str, int]]):
-        sentence1, sentence2, labels = zip(*inputs)
-        if not isinstance(labels, np.ndarray):
-            labels = np.array(labels)
-        batch = self.tokenizer(
-            text=list(sentence1),
-            text_pair=list(sentence2),
-            max_length=self.max_length,
-            padding=True,
-            return_tensors="pt",
-        )
-        batch["labels"] = torch.from_numpy(labels)
+    def __call__(self, inputs) -> BatchEncoding:
+        merged_inputs = flatten_dict(inputs)
+        batch: BatchEncoding = self.tokenizer(merged_inputs["text"], truncation=True, padding=True, return_tensors="pt")
+        if "labels" in merged_inputs:
+            batch["labels"] = torch.tensor(merged_inputs["labels"], dtype=torch.long)
+        if "language" in merged_inputs:
+            batch["language"] = torch.tensor(merged_inputs["language"], dtype=torch.long)
         return batch

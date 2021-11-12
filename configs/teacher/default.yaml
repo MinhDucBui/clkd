@@ -1,0 +1,6 @@
+defaults:
+  - model: automodel.yaml
+  - tokenizer: autotokenizer.yaml
+
+model:
+  use_pretrained_weights: false

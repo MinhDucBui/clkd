@@ -1,0 +1,7 @@
+# By default we turn off recursive instantiation, allowing the user to instantiate themselves at the appropriate times.
+_recursive_: false
+
+_target_: transformers.AutoTokenizer.from_pretrained
+pretrained_model_name_or_path: ${teacher.model.pretrained_model_name_or_path}
+use_fast: true
+

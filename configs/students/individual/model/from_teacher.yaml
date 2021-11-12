@@ -1,0 +1,15 @@
+defaults:
+  - ../tokenizer@tokenizer: autotokenizer.yaml
+
+model:
+  _target_: src.models.model.get_automodel
+
+  pretrained_model_name_or_path: ${teacher.model.pretrained_model_name_or_path}
+  use_pretrained_weights: ${teacher.model.use_pretrained_weights}
+
+  output_hidden_states: ${teacher.model.output_hidden_states}
+  output_attentions: ${teacher.model.output_attentions}
+
+  # Parameters to override for derivation of student from teacher
+  n_layers: 3
+  hidden_dim: 786

@@ -1,0 +1,19 @@
+defaults:
+  - evaluation@evaluation.mlm: mlm.yaml
+  - evaluation@evaluation.retrieval: retrieval.yaml
+  - individual: default.yaml
+
+weight_sharing_across_students: false
+# TODO: Functionality
+# Naming convention: ( ( {Student Name}, {Layer Number} ), ( {Student Name}, {Layer Number}) )
+# E.g. false or
+# - ((student_0, 1), (student_1, 1))
+# - ((student_0, 6), (student_1, 5))
+# Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
+
+embed_sharing: "in_each_model"
+# TODO: Functionality
+# E.g. "in_each_model" <-> Share embeddings between languages in each model
+# E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
+# E.g.
+# - ((student_1, ss), (student_0, ss))

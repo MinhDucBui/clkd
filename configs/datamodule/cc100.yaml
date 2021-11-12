@@ -1,9 +1,11 @@
 _recursive_: False
 _target_: src.datamodules.cc100.CC100DataModule
 
+defaults:
+  - /collate_fn: mlm
+
 pin_memory: False
 data_dir: ${cc}
-# TODO: Add languages to list, have to preprocess this variable
-batch_size: ${train.batch_size}
-num_workers: ${train.num_workers}
+batch_size: 4
+num_workers: 0
 
