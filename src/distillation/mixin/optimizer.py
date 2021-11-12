@@ -32,7 +32,12 @@ class OptimizerMixin:
         for i in range(self.number_of_models):
             model_name = self.student_mapping["id_model"][i]["model_name"]
             optimizer_cfg = self.students_model_cfg[model_name].optimizer
-            optimizer = hydra.utils.instantiate(optimizer_cfg, self.model[i].parameters())
+            embedding_parameters = []
+            for key, value in self.embeddings[i].items():
+                embedding_parameters += list(value.parameters())
+
+            optimizer = hydra.utils.instantiate(optimizer_cfg,
+                                                list(self.model[i].parameters()) + embedding_parameters)
             optimizers.append(optimizer)
 
             if 'lr_scheduler' not in self.students_model_cfg[model_name]:

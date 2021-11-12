@@ -4,7 +4,7 @@ from src.distillation.mixin.eval import EvalMixin
 import torch
 from omegaconf import DictConfig
 from src.utils import utils
-from src.models.model import initialize_teacher_or_student
+from src.models.model import initialize_teacher_or_student, initialize_embeddings, change_embedding_layer
 import hydra
 from src.utils.utils import get_subset_dict, keep_only_model_forward_arguments, get_model_language, \
     name_model_for_logger, append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
@@ -12,8 +12,8 @@ from src.utils.mappings import create_mapping
 from transformers.tokenization_utils_base import BatchEncoding
 from src.datamodules.mixed_data import MixedDataModule
 import itertools
-from typing import Dict, Any
-
+from src.utils.parameter_sharing import embedding_sharing, weight_sharing, initialize_model_different_embeddings
+from src.utils.debug import debug_embedding_updating
 log = utils.get_logger(__name__)
 
 
@@ -38,6 +38,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             if "student_" not in model_name:
                 continue
             self.students_model_cfg[model_name] = model_cfg
+        self.embedding_sharing_cfg = cfg.students.embed_sharing
+        self.weight_sharing_cfg = cfg.students.weight_sharing_across_students
 
         # Initialize Evaluation
         self.evaluation_cfg = self.students_cfg.evaluation
@@ -53,29 +55,36 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         super().__init__()
 
         # Init Students
-        self.model, self.student_tokenizers, self.loss = [], [], []
+        self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
         self.initialize_student_components()
 
         # Init Teacher Model
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
-        self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, None
+        self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
         self.initialize_teacher()
 
         # Init Data Module
         log.info(f"Instantiating datamodule")
         self.initialize_datamodule()
 
+        self.test = None
+        self.test1 = None
+
     def initialize_teacher(self):
         self.teacher_tokenizer, self._teacher = initialize_teacher_or_student(self.teacher_cfg)
         self._teacher.eval()
-        self.teacher_outputs = None
 
     def initialize_student_components(self):
         for model_name, model_cfg in self.students_model_cfg.items():
             tokenizer, model = initialize_teacher_or_student(model_cfg)
-            self.student_tokenizers.append(tokenizer)
+            embeddings = initialize_embeddings(model_cfg)
             self.model.append(model)
+            self.embeddings.append(embeddings)
+            self.student_tokenizers.append(tokenizer)
             self.loss.append(hydra.utils.instantiate(model_cfg["loss"]))
+
+        embedding_sharing(self.embedding_sharing_cfg)
+        weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
 
     def initialize_datamodule(self):
         if hasattr(self.data_cfg, "_target_"):
@@ -122,35 +131,46 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         """
         model_idx = optimizer_idx
-
         # If first iteration, then get the teacher outputs for current batch and save them for next iterations
         if model_idx == 0:
-            # Calculate Teacher Outputs (don't need gradient)
-            with torch.no_grad():
-                full_batch = keep_only_model_forward_arguments(self._teacher,
-                                                               batch,
-                                                               remove_additional_keys=["labels"])
-                # MaskedLMOutput --> OrderedDict
-                self.teacher_outputs = self._teacher.forward(**full_batch)  # (bs, seq_length, voc_size)
+            for language, single_batch in batch.items():
+                # Calculate Teacher Outputs (don't need gradient)
+                with torch.no_grad():
+                    full_batch = keep_only_model_forward_arguments(self._teacher,
+                                                                   single_batch,
+                                                                   remove_additional_keys=["labels"])
+                    # MaskedLMOutput --> OrderedDict
+                    self.teacher_outputs[language] = self._teacher.forward(**full_batch)  # (bs, seq_length, voc_size)
 
+        abs_loss = 0
         # Get the language of the model and get the corresponding samples that are in the model (student) language
         model_languages = get_model_language(model_idx, self.student_mapping)
-        cleaned_batch, subset_batch, idx = get_subset_cleaned_batch(self.model[model_idx], model_languages, batch,
-                                                                    self.language_mapping,
-                                                                    remove_additional_keys=["labels"])
 
-        # Get corresponding Teacher Outputs (in the current model language)
-        subset_teacher_output = get_subset_dict(self.teacher_outputs, idx)
+        for language, single_batch in batch.items():
+            if language not in model_languages:
+                continue
 
-        student_outputs = self.model[model_idx](**cleaned_batch)  # (bs, seq_length, voc_size)
+            # Get corresponding Teacher Outputs (in the current batch language)
+            subset_teacher_output = self.teacher_outputs[language]
 
-        # Calculate Loss and Log
-        loss = self.loss[model_idx](student_outputs, subset_teacher_output, subset_batch["labels"])
+            full_batch = keep_only_model_forward_arguments(self.model[model_idx],
+                                                           single_batch,
+                                                           remove_additional_keys=["labels"])
+
+            change_embedding_layer(self.model[model_idx], model_idx, self.embeddings, language)
+
+            # DEBUG:
+            # debug_embedding_updating(self.model, model_idx, batch_idx, self.test, self.test1, language)
+
+            student_outputs = self.model[model_idx](**full_batch)  # (bs, seq_length, voc_size)
+
+            # Calculate Loss and Log
+            abs_loss += self.loss[model_idx](student_outputs, subset_teacher_output, single_batch["labels"])
 
         model_name_logger = name_model_for_logger(model_languages)
-        tqdm_dict = {model_name_logger + "/" + "train" + "/" + "_".join(model_languages) + '/train_loss': loss}
+        tqdm_dict = {model_name_logger + "/" + "train" + "/" + "_".join(model_languages) + '/train_loss': abs_loss}
         output = {
-            'loss': loss,
+            'loss': abs_loss,
             'progress_bar': tqdm_dict,
             'log': tqdm_dict
         }

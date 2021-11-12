@@ -40,7 +40,8 @@ students:
     student_1:
       languages: [ "ss", "ht" ]
 
-  weight_sharing_across_students: false
+  weight_sharing_across_students:
+    - ((student_0, 1), (student_1, 1))
   # TODO: Functionality
   # Naming convention: ( ( {Student Name}, {Layer Number} ), ( {Student Name}, {Layer Number}) )
   # E.g. false or
@@ -48,7 +49,8 @@ students:
   # - ((student_0, 6), (student_1, 5))
   # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
 
-  embed_sharing: "in_each_model"
+  embed_sharing:
+    - ((student_1, ss), (student_0, ss))
   # TODO: Functionality
   # E.g. "in_each_model" <-> Share embeddings between languages in each model
   # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
@@ -76,7 +78,7 @@ datamodule:
 
 trainer:
   log_every_n_steps: 1
-  val_check_interval: 10
+  val_check_interval: 50
   max_steps: 100
   gpus: 0
 

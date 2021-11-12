@@ -11,6 +11,18 @@ from transformers import (
 )
 
 
+def change_embedding_layer(model, model_idx, embeddings, language):
+    model.base_model.embeddings = embeddings[model_idx][language]
+
+
+def initialize_embeddings(cfg):
+    embeddings = {}
+    for language in cfg.languages:
+        model, _ = hydra.utils.instantiate(cfg.model)
+        embeddings[language] = model.base_model.embeddings
+    return embeddings
+
+
 def initialize_teacher_or_student(cfg):
     """Teacher and student consists of tokenizer, and model (currently).
 
