@@ -12,7 +12,7 @@ from src.utils.mappings import create_mapping
 from transformers.tokenization_utils_base import BatchEncoding
 from src.datamodules.mixed_data import MixedDataModule
 import itertools
-from src.utils.parameter_sharing import embedding_sharing, weight_sharing, initialize_model_different_embeddings
+from src.utils.parameter_sharing import embedding_sharing, weight_sharing
 from src.utils.debug import debug_embedding_updating
 log = utils.get_logger(__name__)
 
@@ -83,7 +83,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             self.student_tokenizers.append(tokenizer)
             self.loss.append(hydra.utils.instantiate(model_cfg["loss"]))
 
-        embedding_sharing(self.embedding_sharing_cfg)
+        embedding_sharing(self.embeddings, self.embedding_sharing_cfg, self.student_mapping)
         weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
 
     def initialize_datamodule(self):
