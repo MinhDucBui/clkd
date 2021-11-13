@@ -3,6 +3,8 @@ from src.utils.utils import convert_cfg_tuple
 from transformers import BertForMaskedLM
 import sys
 
+LOOKUP_TABLE = {BertForMaskedLM: {"layer": "base_model.encoder.layer"}}
+
 
 def embedding_sharing(embeddings, embedding_sharing_cfg, student_mapping):
     if embedding_sharing_cfg == "in_each_model":
@@ -11,6 +13,13 @@ def embedding_sharing(embeddings, embedding_sharing_cfg, student_mapping):
             origin_embedding = model_embeddings[origin_language]
             for language in model_embeddings.keys():
                 model_embeddings[language] = origin_embedding
+    elif embedding_sharing_cfg == "in_overlapping_language":
+        for i in range(len(embeddings)):
+            for j in range(i + 1, len(embeddings)):
+                overlapping_embeddings = list(embeddings[i].keys() & embeddings[j].keys())
+                for overlapping_lang in overlapping_embeddings:
+                    origin_embedding = embeddings[i][overlapping_lang]
+                    embeddings[j][overlapping_lang] = origin_embedding
     else:
         new_cfg = []
         for embedding_sharing_tuple in embedding_sharing_cfg:
@@ -50,26 +59,15 @@ def get_id(sharing_tuple, student_mapping):
 
 
 def replace_layer(students, origin_id, origin_layer_n, replace_student_id, replace_layer_n):
-    if isinstance(students[replace_student_id], BertForMaskedLM):
-        students[replace_student_id].base_model.encoder.layer[replace_layer_n] = \
-            students[origin_id].base_model.encoder.layer[origin_layer_n]
+    for key, value in LOOKUP_TABLE.items():
+        if isinstance(students[replace_student_id], key):
+ 
+            exec("students[" + str(replace_student_id) + "]." + value["layer"] + "[" + str(replace_layer_n) + "] = "
+                 + "students[" + str(origin_id) + "]." + value["layer"] + "[" + str(origin_layer_n) + "]")
 
-        # Debug:
-        # test_lang = list(students[replace_student_id].keys())[1]
-        # print(students[replace_student_id][test_lang].base_model.encoder)
-        # print(students[replace_student_id][test_lang].base_model.encoder.layer)
-    else:
-        sys.exit("Get Layer for this Model Type is not implemented!!")
-
-
-def replace_embedding(students, origin_id, origin_layer_n, replace_student_id, replace_layer_n):
-    if isinstance(students[replace_student_id], BertForMaskedLM):
-        students[replace_student_id].base_model.encoder.layer[replace_layer_n] = \
-            students[origin_id].base_model.encoder.layer[origin_layer_n]
-
-        # Debug:
-        # test_lang = list(students[replace_student_id].keys())[1]
-        # print(students[replace_student_id][test_lang].base_model.encoder)
-        # print(students[replace_student_id][test_lang].base_model.encoder.layer)
-    else:
-        sys.exit("Get Layer for this Model Type is not implemented!!")
+            # Debug:
+            # test_lang = list(students[replace_student_id].keys())[1]
+            # print(students[replace_student_id][test_lang].base_model.encoder)
+            # print(students[replace_student_id][test_lang].base_model.encoder.layer)
+        else:
+            sys.exit("Get Layer for this Model Type is not implemented!!")
