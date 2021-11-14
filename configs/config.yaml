@@ -15,7 +15,7 @@ defaults:
 
   # Define (Train/Val) Datamodule
   - datamodule@datamodule.train: cc100.yaml
-  - datamodule@datamodule.val: jw300.yaml
+  - datamodule@datamodule.val: tatoeba.yaml
 
   # Utils
   - callbacks: none.yaml # set this to null if you don't want to use callbacks
@@ -36,9 +36,9 @@ students:
     # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
     # Order is determined by order of listed item
     student_0:
-      languages: [ "ss", "mn" ]
+      languages: [ "eo", "be" ]
     student_1:
-      languages: [ "ss", "ht" ]
+      languages: [ "eo", "af" ]
 
   weight_sharing_across_students:
     - ((student_0, 1), (student_1, 1))
@@ -49,8 +49,7 @@ students:
   # - ((student_0, 6), (student_1, 5))
   # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
 
-  embed_sharing:
-    - ((student_1, ss), (student_0, ss))
+  embed_sharing: "in_overlapping_language"
   # TODO: Functionality
   # E.g. "in_each_model" <-> Share embeddings between languages in each model
   # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
@@ -61,15 +60,15 @@ students:
     #retrieval: null
     retrieval:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_0, mn), (student_0, ss))
-        - ((student_1, ht), (student_1, ss))
+        - ((student_0, be), (student_0, eo))
+        - ((student_1, af), (student_1, eo))
 
     # mlm: null
     mlm:
       aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-        - ((student_0, mn), (student_0, ss))
-        - ((student_1, ht), (student_1, ss))
+        - ((student_0, be), (student_0, eo))
+        - ((student_1, af), (student_1, eo))
 
 
 datamodule:

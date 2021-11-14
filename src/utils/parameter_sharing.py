@@ -61,7 +61,6 @@ def get_id(sharing_tuple, student_mapping):
 def replace_layer(students, origin_id, origin_layer_n, replace_student_id, replace_layer_n):
     for key, value in LOOKUP_TABLE.items():
         if isinstance(students[replace_student_id], key):
- 
             exec("students[" + str(replace_student_id) + "]." + value["layer"] + "[" + str(replace_layer_n) + "] = "
                  + "students[" + str(origin_id) + "]." + value["layer"] + "[" + str(origin_layer_n) + "]")
 
