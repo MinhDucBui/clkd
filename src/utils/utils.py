@@ -127,6 +127,7 @@ def download_file(language, output_folder):
     file_name = '{language}.txt.xz'.format(language=language)
     link = 'http://data.statmt.org/cc-100/' + file_name
     output_file = os.path.join(output_folder, file_name)
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
     with open(output_file, "wb") as f:
         response = requests.get(link, stream=True)
         total_length = response.headers.get('content-length')
