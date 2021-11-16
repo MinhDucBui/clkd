@@ -1,5 +1,6 @@
 from transformers import AutoModelForMaskedLM, AutoConfig
 import hydra
+import torch
 from omegaconf import OmegaConf, open_dict
 from transformers import (
     XLMRobertaConfig,
@@ -19,6 +20,8 @@ def initialize_embeddings(cfg):
     embeddings = {}
     for language in cfg.languages:
         model, _ = hydra.utils.instantiate(cfg.model)
+        if torch.cuda.is_available():
+            model.base_model.embeddings = model.base_model.embeddings.to(device='cuda')
         embeddings[language] = model.base_model.embeddings
     return embeddings
 

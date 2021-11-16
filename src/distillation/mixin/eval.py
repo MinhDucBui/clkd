@@ -1,5 +1,5 @@
 from typing import Callable, Union
-
+import torch
 import hydra
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
@@ -70,6 +70,9 @@ class EvalMixin:
         for single_item in self.validation_mapping:
             # hparams used to fast-forward required attributes
             single_item["cfg"] = hydra.utils.instantiate(self.cfg.students.evaluation[single_item["task_name"]])
+            if torch.cuda.is_available():
+                for metric_name, metric in single_item["cfg"]["metrics"].items():
+                    metric["metric"] = metric["metric"].cuda()
             # pass identity if transform is not set
             for attr in ["batch", "outputs", "step_outputs"]:
                 if not callable(getattr(single_item["cfg"].apply, attr, None)):
@@ -148,6 +151,7 @@ class EvalMixin:
         """Performs model forward & user batch transformation in an eval step."""
         if self.evaluation.apply.batch is not None:
             batch = self.evaluation.apply.batch(batch)
+
         # Changed: From self(batch) -> self.model[model_idx](**batch) as we have multiple models
         # Use Batch without Labels
         outputs = self.model[model_idx].forward(**{key: value for key, value in batch.items() if key not in ["labels"]})

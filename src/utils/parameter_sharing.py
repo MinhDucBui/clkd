@@ -38,7 +38,7 @@ def embedding_sharing(embeddings, embedding_sharing_cfg, student_mapping):
 
 
 def weight_sharing(weight_sharing_cfg, students, student_mapping):
-    if weight_sharing_cfg == "in_each_model":
+    if not weight_sharing_cfg or weight_sharing_cfg == "in_each_model":
         pass
     else:
         new_cfg = []

@@ -67,16 +67,17 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         log.info(f"Instantiating datamodule")
         self.initialize_datamodule()
 
-        self.test = None
-        self.test1 = None
-
     def initialize_teacher(self):
         self.teacher_tokenizer, self._teacher = initialize_teacher_or_student(self.teacher_cfg)
+        if torch.cuda.is_available():
+            self._teacher = self._teacher.to(device='cuda')
         self._teacher.eval()
 
     def initialize_student_components(self):
         for model_name, model_cfg in self.students_model_cfg.items():
             tokenizer, model = initialize_teacher_or_student(model_cfg)
+            if torch.cuda.is_available():
+                model = model.to(device='cuda')
             embeddings = initialize_embeddings(model_cfg)
             self.model.append(model)
             self.embeddings.append(embeddings)
@@ -130,6 +131,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         Returns:
 
         """
+
         model_idx = optimizer_idx
         # If first iteration, then get the teacher outputs for current batch and save them for next iterations
         if model_idx == 0:
