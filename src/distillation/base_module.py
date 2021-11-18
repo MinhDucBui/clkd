@@ -48,7 +48,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         # Sanity Check Config
         assert_functions(self.students_model_cfg, self.embedding_sharing_cfg, self.weight_sharing_cfg, self.evaluation_cfg)
-        asd
+
         # Map language to id, student to languages and get validation tasks
         self.language_mapping, self.student_mapping, self.validation_mapping \
             = create_mapping(self.students_cfg)
