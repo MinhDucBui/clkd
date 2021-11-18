@@ -6,8 +6,9 @@ from omegaconf import DictConfig
 from src.utils import utils
 from src.models.model import initialize_teacher_or_student, initialize_embeddings, change_embedding_layer
 import hydra
-from src.utils.utils import get_subset_dict, keep_only_model_forward_arguments, get_model_language, \
+from src.utils.utils import keep_only_model_forward_arguments, get_model_language, \
     name_model_for_logger, append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
+from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
 from transformers.tokenization_utils_base import BatchEncoding
 from src.datamodules.mixed_data import MixedDataModule
@@ -45,6 +46,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         self.evaluation_cfg = self.students_cfg.evaluation
         self.evaluation_cfg = initialize_evaluation_cfg(self.evaluation_cfg)
 
+        # Sanity Check Config
+        assert_functions(self.students_model_cfg, self.embedding_sharing_cfg, self.weight_sharing_cfg, self.evaluation_cfg)
+        asd
         # Map language to id, student to languages and get validation tasks
         self.language_mapping, self.student_mapping, self.validation_mapping \
             = create_mapping(self.students_cfg)

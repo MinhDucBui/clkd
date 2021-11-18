@@ -87,7 +87,7 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
     logger_names = []
 
     # Task
-    for task, task_cfg in evaluation_cfg.items():
+    for task, task_cfg in copy.deepcopy(evaluation_cfg).items():
         new_item = {}
         for eval_model_tuple in task_cfg["evaluate_with"]:
             new_item["task_name"] = task_cfg.logger.name
