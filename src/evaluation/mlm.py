@@ -9,10 +9,7 @@ class Perplexity(Metric):
         # dist_reduce_fx indicates the function that should be used to reduce
         # state from multiple processes
         super().__init__(dist_sync_on_step=dist_sync_on_step)
-        if torch.cuda.is_available():
-            self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=-100, reduction="sum").cuda()
-        else:
-            self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=-100, reduction="sum").cuda()
+        self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=-100, reduction="sum")
         self.add_state("ce_total", default=torch.tensor(0, dtype=torch.float32), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 

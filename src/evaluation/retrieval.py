@@ -8,7 +8,7 @@ class MRR(Metric):
         # dist_reduce_fx indicates the function that should be used to reduce
         # state from multiple processes
         super().__init__(dist_sync_on_step=dist_sync_on_step)
-        self.add_state("reciprocal_rank", default=torch.tensor(0, dtype=torch.float32), dist_reduce_fx="sum")
+        self.add_state("reciprocal_rank", default=torch.tensor(0, dtype=torch.float64), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, preds: torch.Tensor):

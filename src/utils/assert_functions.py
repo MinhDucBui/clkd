@@ -11,6 +11,8 @@ def assert_eval_cfg(students_cfg, eval_cfg):
     for eval_name, cfg in eval_cfg.items():
         for single_tuple in cfg["evaluate_with"]:
             for model in single_tuple:
+                if model[0] == "teacher":
+                    continue
                 assert model[0] in students_cfg.keys(), \
                     "Model {} in evaluation config is not defined in students_cfg".format(model[0])
                 assert model[1] in students_cfg[model[0]]["languages"], \

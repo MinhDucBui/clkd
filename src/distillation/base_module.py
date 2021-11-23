@@ -1,3 +1,5 @@
+import copy
+
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
@@ -6,7 +8,7 @@ from omegaconf import DictConfig
 from src.utils import utils
 from src.models.model import initialize_teacher_or_student, initialize_embeddings, change_embedding_layer
 import hydra
-from src.utils.utils import keep_only_model_forward_arguments, get_model_language, \
+from src.utils.utils import keep_only_model_forward_arguments, get_model_language, compare_models, \
     name_model_for_logger, append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
@@ -15,6 +17,7 @@ from src.datamodules.mixed_data import MixedDataModule
 import itertools
 from src.utils.parameter_sharing import embedding_sharing, weight_sharing
 from src.utils.debug import debug_embedding_updating
+
 log = utils.get_logger(__name__)
 
 
@@ -41,13 +44,15 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             self.students_model_cfg[model_name] = model_cfg
         self.embedding_sharing_cfg = cfg.students.embed_sharing
         self.weight_sharing_cfg = cfg.students.weight_sharing_across_students
+        self.validation_epoch_index = 0
 
         # Initialize Evaluation
         self.evaluation_cfg = self.students_cfg.evaluation
         self.evaluation_cfg = initialize_evaluation_cfg(self.evaluation_cfg)
 
         # Sanity Check Config
-        assert_functions(self.students_model_cfg, self.embedding_sharing_cfg, self.weight_sharing_cfg, self.evaluation_cfg)
+        assert_functions(self.students_model_cfg, self.embedding_sharing_cfg, self.weight_sharing_cfg,
+                         self.evaluation_cfg)
 
         # Map language to id, student to languages and get validation tasks
         self.language_mapping, self.student_mapping, self.validation_mapping \
@@ -66,6 +71,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
         self.initialize_teacher()
+        self.test_teacher = copy.deepcopy(self._teacher)
+        compare_models(self.test_teacher, self._teacher)
 
         # Init Data Module
         log.info(f"Instantiating datamodule")
@@ -240,26 +247,30 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             model_tuple = [model_cfg["model_idx"], model_cfg["current_language"]]
 
             # Check for "eval_with" (another model validated with the current model, e.g. retrieval task)
-            if model_cfg["eval_with"] != "":
-                model_eval_tuples = model_cfg["eval_with"]
-                model_eval_tuples = [[eval_tuple[0], eval_tuple[1].split("_")] for eval_tuple in model_eval_tuples]
-            else:
-                model_eval_tuples = [None, None]
-
+            model_eval_tuples = model_cfg["eval_with"]
+            model_eval_tuples = [[eval_tuple[0], eval_tuple[1].split("_")] for eval_tuple in model_eval_tuples]
             # Execute evaluation instructions for the model (and eval_with if it exists)
             for current_model_tuple in [model_tuple] + model_eval_tuples:
-                cleaned_batch, _, _ = get_subset_cleaned_batch(self.model[current_model_tuple[0]],
+                if current_model_tuple[0] == "teacher":
+                    current_model = self._teacher
+                else:
+                    current_model = self.model[current_model_tuple[0]]
+
+                cleaned_batch, _, _ = get_subset_cleaned_batch(current_model,
                                                                current_model_tuple[1],
                                                                batch,
                                                                self.language_mapping,
                                                                remove_additional_keys=[])
+                if cleaned_batch["input_ids"].nelement() == 0:
+                    continue
 
-                # TODO: Change Model ID
+                # TODO: Hardcoded, retrieval only needs to be computed once...
+                # TODO: Best case is that every task only needs to be coded once... Change to this behaviour
                 self.evaluation = model_cfg["cfg"]
                 self.metrics = self.evaluation.metrics
                 output_step = self.eval_step(cleaned_batch,
                                              stage=logger_name,
-                                             model_idx=current_model_tuple[0])
+                                             model=current_model)
                 val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
         return val_outputs
 
@@ -288,7 +299,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             for logger_name in list(value[0].keys()):
                 for item_ in value:
                     output_step.append(item_[logger_name])
-
                 # Get the corresponding evaluation instructions and execute them
                 for cfg in self.validation_mapping:
                     if cfg["logger_name"] == logger_name:
