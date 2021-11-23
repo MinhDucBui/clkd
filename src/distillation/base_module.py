@@ -71,8 +71,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
         self.initialize_teacher()
-        self.test_teacher = copy.deepcopy(self._teacher)
-        compare_models(self.test_teacher, self._teacher)
 
         # Init Data Module
         log.info(f"Instantiating datamodule")
@@ -290,19 +288,22 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         """
 
-        # Loop through all validation step outputs. In each step, outputs for different metrics could be
-        # available. E.g. step one has perplexity for language hh and mn on the validation dataset (hh, mn)
-        for value in validation_step_outputs:
+        for model_eval_cfg in self.validation_mapping:
+            logger_name = model_eval_cfg["logger_name"]
             output_step = []
 
-            # Loop through the outputs for each metric
-            for logger_name in list(value[0].keys()):
-                for item_ in value:
-                    output_step.append(item_[logger_name])
-                # Get the corresponding evaluation instructions and execute them
-                for cfg in self.validation_mapping:
-                    if cfg["logger_name"] == logger_name:
-                        # TODO: Change Model ID
-                        self.evaluation = cfg["cfg"]
-                        self.metrics = self.evaluation.metrics
-                self.eval_epoch_end(logger_name, output_step)
+            # Loop through all validation step outputs. In each step, outputs for different metrics could be
+            # available. E.g. step one has perplexity for language hh and mn on the validation dataset (hh, mn)
+            for value in validation_step_outputs:
+                if isinstance(value, list):
+                    for item_ in value:
+                        if logger_name in item_.keys():
+                            output_step.append(item_[logger_name])
+                elif isinstance(value, dict):
+                    output_step.append(value[logger_name])
+
+            # Get the corresponding evaluation instructions and execute them
+            self.evaluation = model_eval_cfg["cfg"]
+            self.metrics = self.evaluation.metrics
+            self.eval_epoch_end(logger_name, output_step)
+
