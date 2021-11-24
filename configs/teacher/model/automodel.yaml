@@ -1,6 +1,6 @@
 _target_: src.models.model.get_automodel
 
-pretrained_model_name_or_path: "prajjwal1/bert-tiny"
+pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
 use_pretrained_weights: true
 output_hidden_states: true
 output_attentions: true
