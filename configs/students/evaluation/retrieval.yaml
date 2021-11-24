@@ -32,8 +32,7 @@ metrics:
   mrr:
     # instructions to instantiate metric, preferrably torchmetrics.Metric
     metric:
-      _target_: src.utils.hydra.partial
-      _partial_: src.evaluation.retrieval.mrr
+      _target_: src.evaluation.retrieval.MRR
     # either on_step: true or on_epoch: true
     on_epoch: true
     compute: 

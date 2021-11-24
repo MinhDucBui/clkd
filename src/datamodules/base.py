@@ -8,6 +8,7 @@ from omegaconf.dictconfig import DictConfig
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 from transformers import PreTrainedTokenizer
+import sys
 
 
 class BaseDataModule(LightningDataModule, ABC):
@@ -118,35 +119,40 @@ class BaseDataModule(LightningDataModule, ABC):
         raise NotImplementedError(f"Please implement setup for {type(self)}")
 
     # TODO(fdschmidt93): support custom sampler
-    def train_dataloader(self) -> DataLoader:
-
-        return DataLoader(
-            dataset=self.data_train,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=self.train_collate_fn
-            if self.train_collate_fn is not None
-            else self.collate_fn,
-            # Changed: can only shuffle in map-style dataset. Will fail for iterable dataset
-            shuffle=False,
-        )
+    def train_dataloader(self):
+        if isinstance(self.data_train, dict):
+            dataloader_args = {"batch_size": self.batch_size,
+                               "num_workers": self.num_workers,
+                               "pin_memory": self.pin_memory,
+                               "collate_fn": self.train_collate_fn
+                               if self.train_collate_fn is not None
+                               else self.collate_fn,
+                               # Changed: can only shuffle in map-style dataset. Will fail for iterable dataset
+                               "shuffle": False}
+            train_dataloaders = {}
+            for key, value in self.data_train.items():
+                train_dataloaders[key] = DataLoader(
+                    dataset=value,
+                    **dataloader_args
+                )
+            return train_dataloaders
 
     # TODO(fdschmidt93): support custom sampler
     def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
         val_dataloaders = []
-        if not isinstance(self.data_val, list):
-            self.data_val = [self.data_val]
-        for index in range(len(self.data_val)):
-            dataloader_args = {"dataset": get_value_for_list_or_value(self.data_val, index),
-                               "batch_size": get_value_for_list_or_value(self.batch_size, index),
-                               "num_workers": get_value_for_list_or_value(self.num_workers, index),
-                               "pin_memory": get_value_for_list_or_value(self.pin_memory, index),
-                               "collate_fn": get_value_for_list_or_value(self.val_collate_fn, index)
-                               if self.val_collate_fn is not None
-                               else get_value_for_list_or_value(self.collate_fn, index),
-                               "shuffle": False}
-            val_dataloaders.append(DataLoader(**dataloader_args))
+        if isinstance(self.data_val, list):
+            for index in range(len(self.data_val)):
+                dataloader_args = {"dataset": get_value_for_list_or_value(self.data_val, index),
+                                   "batch_size": get_value_for_list_or_value(self.batch_size, index),
+                                   "num_workers": get_value_for_list_or_value(self.num_workers, index),
+                                   "pin_memory": get_value_for_list_or_value(self.pin_memory, index),
+                                   "collate_fn": get_value_for_list_or_value(self.val_collate_fn, index)
+                                   if self.val_collate_fn is not None
+                                   else get_value_for_list_or_value(self.collate_fn, index),
+                                   "shuffle": False}
+                val_dataloaders.append(DataLoader(**dataloader_args))
+        else:
+            sys.exit("Not implemented")
         return val_dataloaders
 
 

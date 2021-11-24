@@ -14,8 +14,23 @@ import requests
 import lzma, shutil
 
 
+def compare_models(model_1, model_2):
+    models_differ = 0
+    for key_item_1, key_item_2 in zip(model_1.state_dict().items(), model_2.state_dict().items()):
+        if torch.equal(key_item_1[1], key_item_2[1]):
+            pass
+        else:
+            models_differ += 1
+            if (key_item_1[0] == key_item_2[0]):
+                print('Mismtach found at', key_item_1[0])
+            else:
+                raise Exception
+    if models_differ == 0:
+        print('Models match perfectly! :)')
+
 def add_language_tag(dataset, language):
     return dataset.map(lambda x: dict(x, **{"language": language}))
+
 
 def add_language_tag_tokenizer(x, tokenizer, language_mapping):
     language_tag = [language_mapping["lang_id"][x["language"]]]
@@ -30,19 +45,26 @@ def initialize_evaluation_cfg(evaluation_cfg):
             delete_tasks.append(task_name)
             continue
         for index, model_eval_with in enumerate(task["evaluate_with"]):
-            new_tuple = []
-            model_eval_with = model_eval_with.replace(" ", "")
-            splitted_tuple = tuple(map(str, model_eval_with.strip('()').split('),(')))
-            for single_tuple in splitted_tuple:
-                single_tuple = tuple(map(str, single_tuple.strip('()').split(',')))
-                new_tuple.append(single_tuple)
-            task["evaluate_with"][index] = tuple(new_tuple)
+            task["evaluate_with"][index] = convert_cfg_tuple(model_eval_with)
 
     OmegaConf.set_struct(evaluation_cfg, True)
     with open_dict(evaluation_cfg):
         for delete_key in delete_tasks:
             del evaluation_cfg[delete_key]
     return evaluation_cfg
+
+
+def convert_cfg_tuple(cfg_tuple):
+    if not ("(" == cfg_tuple[0] and ")" == cfg_tuple[-1]):
+        sys.exit("Given cfg_tuple {} is not a tuple. Please make sure that its a tuple.".format(cfg_tuple))
+    new_tuple = []
+    cfg_tuple = cfg_tuple.replace(" ", "")
+    splitted_tuple = tuple(map(str, cfg_tuple.strip('()').split('),(')))
+    for single_tuple in splitted_tuple:
+        single_tuple = tuple(map(str, single_tuple.strip('()').split(',')))
+        new_tuple.append(single_tuple)
+
+    return tuple(new_tuple)
 
 
 def append_torch_in_dict(dict_to_add, dict_to_extend):
@@ -77,7 +99,8 @@ def name_model_for_logger(languages):
         distilltype = "(bilingual)"
     else:
         distilltype = "(multilingual)"
-
+    if languages[0] == "teacher":
+        distilltype = "(multilingual)"
     return "_".join(languages) + distilltype
 
 
@@ -93,6 +116,7 @@ def get_subset_cleaned_batch(model, model_language, batch, language_mapping, rem
                                                       subset_batch,
                                                       remove_additional_keys=remove_additional_keys)
     return cleaned_batch, subset_batch, idx
+
 
 def keep_only_model_forward_arguments(model, batch, remove_additional_keys=None):
     if remove_additional_keys is None:
@@ -118,6 +142,7 @@ def download_file(language, output_folder):
     file_name = '{language}.txt.xz'.format(language=language)
     link = 'http://data.statmt.org/cc-100/' + file_name
     output_file = os.path.join(output_folder, file_name)
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
     with open(output_file, "wb") as f:
         response = requests.get(link, stream=True)
         total_length = response.headers.get('content-length')

@@ -77,19 +77,17 @@ class CC100DataModule(BaseDataModule):
     # TODO: Move to Collator
     def load_dataset_iterable(self, paths_to_files):
 
-        dataset_lst = []
+        dataset_lst = {}
         for language, path in paths_to_files.items():
             language_dataset = load_dataset('text', data_files={'train': path}, split='train', streaming=True)
             language_dataset = add_language_tag(language_dataset, language)
-            # Shuffle Dataset
-            dataset_lst.append(language_dataset)
 
-        dataset = interleave_datasets(dataset_lst)  # , probabilities=[0.8, 0.2], seed=42)
+            # https://github.com/huggingface/datasets/issues/2583
+            language_dataset = language_dataset.with_format("torch")
 
-        # https://github.com/huggingface/datasets/issues/2583
-        dataset = dataset.with_format("torch")
+            # TODO: This Part should happen in Collator?
+            tokenized_dataset = language_dataset.map(
+                lambda x: add_language_tag_tokenizer(x, self.tokenizer, self.language_mapping))
 
-        # TODO: This Part should happen in Collator?
-        tokenized_dataset = dataset.map(
-            lambda x: add_language_tag_tokenizer(x, self.tokenizer, self.language_mapping))
-        return tokenized_dataset
+            dataset_lst[language] = tokenized_dataset
+        return dataset_lst

@@ -15,7 +15,7 @@ defaults:
 
   # Define (Train/Val) Datamodule
   - datamodule@datamodule.train: cc100.yaml
-  - datamodule@datamodule.val: jw300.yaml
+  - datamodule@datamodule.val: tatoeba.yaml
 
   # Utils
   - callbacks: none.yaml # set this to null if you don't want to use callbacks
@@ -27,18 +27,16 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - override hydra/job_logging: colorlog
 
-#teacher:
-#  model:
-#    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
+teacher:
+  model:
+    pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
 
 students:
   individual:
     # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
     # Order is determined by order of listed item
     student_0:
-      languages: [ "ss", "mn" ]
-    student_1:
-      languages: [ "ss", "ht" ]
+      languages: [ "cs", "sl" ]
 
   weight_sharing_across_students: false
   # TODO: Functionality
@@ -59,26 +57,27 @@ students:
     #retrieval: null
     retrieval:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_0, mn), (student_0, ss))
-        - ((student_1, ht), (student_1, ss))
+        - ((student_0, cs), (student_0, sl))
 
     # mlm: null
     mlm:
       aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-        - ((student_0, mn), (student_0, ss))
-        - ((student_1, ht), (student_1, ss))
+        - ((student_0, cs), (student_0, sl))
 
 
 datamodule:
   val:
-    max_length: 100
+    max_length: 500
+    batch_size: 1
+  train:
+    batch_size: 1
 
 trainer:
-  log_every_n_steps: 1
-  val_check_interval: 10
-  max_steps: 100
-  gpus: 0
+  log_every_n_steps: 10
+  val_check_interval: 1000
+  max_steps: 100000
+  gpus: 1
 
 
 # Random Seed

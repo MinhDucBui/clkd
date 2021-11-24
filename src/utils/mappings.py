@@ -85,9 +85,8 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
     """
 
     logger_names = []
-
     # Task
-    for task, task_cfg in evaluation_cfg.items():
+    for task, task_cfg in copy.deepcopy(evaluation_cfg).items():
         new_item = {}
         for eval_model_tuple in task_cfg["evaluate_with"]:
             new_item["task_name"] = task_cfg.logger.name
@@ -98,28 +97,45 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
                 new_item["model_language"] = []
                 if getattr(task_cfg, "aggregate", True):
                     new_item["model_name"] = eval_model_tuple[0][0]
-                    new_item["model_idx"] = model_mapping["model_id"][new_item["model_name"]]["idx"]
-                    new_item["model_language"] = model_mapping["model_id"][new_item["model_name"]]["languages"]
-                    if len(eval_model_tuple) > 1:
-                        for model_tuple in eval_model_tuple:
-                            model_tuple[0] = model_mapping["model_id"][model_tuple[0]]["idx"]
-                        new_item["eval_with"] = eval_model_tuple
+                    if new_item["model_name"] == "teacher":
+                        new_item["model_idx"] = "teacher"
+                        new_item["model_language"] = ["teacher"]
+                        if len(eval_model_tuple) > 1:
+                            new_item["eval_with"] = []
+                            for model_tuple in eval_model_tuple[1:]:
+                                model_tuple[0] = "teacher"
+                                new_item["eval_with"].append(model_tuple)
+                        else:
+                            new_item["eval_with"] = []
                     else:
-                        new_item["eval_with"] = []
-                    new_item["current_language"] = [tuple_[1] for tuple_ in eval_model_tuple]
+                        new_item["model_idx"] = model_mapping["model_id"][new_item["model_name"]]["idx"]
+                        new_item["model_language"] = model_mapping["model_id"][new_item["model_name"]]["languages"]
+                        if len(eval_model_tuple) > 1:
+                            new_item["eval_with"] = []
+                            for model_tuple in eval_model_tuple[1:]:
+                                model_tuple[0] = model_mapping["model_id"][model_tuple[0]]["idx"]
+                                new_item["eval_with"].append(model_tuple)
+                        else:
+                            new_item["eval_with"] = []
+                    new_item["current_language"] = [eval_model_tuple[0][1]]
                     logger_names.append(copy.deepcopy(new_item))
                 else:
                     # Create for each model a separate item
                     for eval_model in eval_model_tuple:
                         new_item["model_name"] = eval_model[0]
-                        new_item["model_idx"] = model_mapping["model_id"][new_item["model_name"]]["idx"]
+                        if new_item["model_name"] == "teacher":
+                            new_item["model_idx"] = "teacher"
+                            new_item["model_language"] = ["teacher"]
+                        else:
+                            new_item["model_idx"] = model_mapping["model_id"][new_item["model_name"]]["idx"]
+                            new_item["model_language"] = model_mapping["model_id"][new_item["model_name"]]["languages"]
                         new_item["eval_with"] = []
-                        new_item["model_language"] = model_mapping["model_id"][new_item["model_name"]]["languages"]
                         new_item["current_language"] = [eval_model[1]]
                         logger_names.append(copy.deepcopy(new_item))
 
     for item in logger_names:
+        all_languages = item["current_language"] + [eval_tuple[1] for eval_tuple in item["eval_with"]]
         item["logger_name"] = "/".join([name_model_for_logger(item["model_language"]), stage, item["task_name"],
-                                        "_".join(item["dataset"]) + "(dataset)", "_".join(item["current_language"])])
+                                        "_".join(item["dataset"]) + "(dataset)", "_".join(all_languages)])
 
     return logger_names

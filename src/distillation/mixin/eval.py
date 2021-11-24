@@ -1,5 +1,5 @@
 from typing import Callable, Union
-
+import torch
 import hydra
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
@@ -70,6 +70,9 @@ class EvalMixin:
         for single_item in self.validation_mapping:
             # hparams used to fast-forward required attributes
             single_item["cfg"] = hydra.utils.instantiate(self.cfg.students.evaluation[single_item["task_name"]])
+            if torch.cuda.is_available():
+                for metric_name, metric in single_item["cfg"]["metrics"].items():
+                    metric["metric"] = metric["metric"].cuda()
             # pass identity if transform is not set
             for attr in ["batch", "outputs", "step_outputs"]:
                 if not callable(getattr(single_item["cfg"].apply, attr, None)):
@@ -144,13 +147,14 @@ class EvalMixin:
             return ret
         return {"outputs": outputs, "batch": batch}
 
-    def eval_step(self, batch: Union[dict, BatchEncoding], stage: str, model_idx: int) -> dict:
+    def eval_step(self, batch: Union[dict, BatchEncoding], stage: str, model) -> dict:
         """Performs model forward & user batch transformation in an eval step."""
         if self.evaluation.apply.batch is not None:
             batch = self.evaluation.apply.batch(batch)
+
         # Changed: From self(batch) -> self.model[model_idx](**batch) as we have multiple models
         # Use Batch without Labels
-        outputs = self.model[model_idx].forward(**{key: value for key, value in batch.items() if key not in ["labels"]})
+        outputs = model.forward(**{key: value for key, value in batch.items() if key not in ["labels"]})
         if self.evaluation.apply.outputs is not None:
             outputs = self.evaluation.apply.outputs(outputs, batch)
 
@@ -158,7 +162,6 @@ class EvalMixin:
             if getattr(v, "on_step", False):
                 kwargs = self.prepare_metric_input(outputs, batch, v.compute)
                 v["metric"](**kwargs)
-                #self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
         return self.collect_step_output(outputs, batch)
 
     def eval_epoch_end(self, stage: str, step_outputs: list) -> dict:
@@ -181,13 +184,13 @@ class EvalMixin:
                 if self.evaluation.apply.step_outputs is not None:
                     outputs = self.evaluation.apply.step_outputs(outputs)
                 break
-
         for k, v in self.metrics.items():
             if getattr(v, "on_step", False):
                 self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
             if getattr(v, "on_epoch", False):
                 kwargs: dict = self.prepare_metric_input(outputs, None, v.compute)
                 self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True)
+            v["metric"].reset()
         return outputs
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0) -> Union[None, dict]:
