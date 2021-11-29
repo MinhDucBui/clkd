@@ -70,9 +70,8 @@ class EvalMixin:
         for single_item in self.validation_mapping:
             # hparams used to fast-forward required attributes
             single_item["cfg"] = hydra.utils.instantiate(self.cfg.students.evaluation[single_item["task_name"]])
-            if torch.cuda.is_available():
-                for metric_name, metric in single_item["cfg"]["metrics"].items():
-                    metric["metric"] = metric["metric"].cuda()
+            for metric_name, metric in single_item["cfg"]["metrics"].items():
+                exec("self.%s = %s" % (single_item["model_name"] + "_" + single_item["task_name"] + "_" + metric_name, "metric['metric']"))
             # pass identity if transform is not set
             for attr in ["batch", "outputs", "step_outputs"]:
                 if not callable(getattr(single_item["cfg"].apply, attr, None)):

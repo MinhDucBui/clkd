@@ -31,7 +31,9 @@ students:
     # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
     # Order is determined by order of listed item
     student_0:
-      languages: [ "cs", "sl" ]
+      languages: [ "sl" ]
+    student_1:
+      languages: [ "cs" ]
 
   weight_sharing_across_students: false
   # Naming convention: ( ( {Student Name}, {Layer Number} ), ( {Student Name}, {Layer Number}) )
@@ -40,7 +42,8 @@ students:
   # - ((student_0, 6), (student_1, 5))
   # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
 
-  embed_sharing: "in_each_model"
+  embed_sharing:
+    - ((student_1, cs), (student_0, sl))
   # E.g. "in_each_model" <-> Share embeddings between languages in each model
   # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
   # E.g.
@@ -52,27 +55,29 @@ students:
     #retrieval: null
     retrieval:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_0, cs), (student_0, sl))
+        - ((student_1, cs), (student_0, sl))
 
     # mlm: null
     mlm:
       aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-        - ((student_0, cs), (student_0, sl))
+        - ((student_1, cs), (student_0, sl))
 
 
 datamodule:
   val:
     max_length: 300
-    batch_size: 1
+    batch_size: 2
   train:
-    batch_size: 1
+    batch_size: 2
 
 trainer:
   log_every_n_steps: 10
-  val_check_interval: 1000
-  max_steps: 100000
-  gpus: 1
+  val_check_interval: 100
+  max_steps: 1000
+  gpus: 2
+  num_nodes: 1
+  strategy: ddp
 
 
 # Random Seed
