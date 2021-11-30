@@ -72,11 +72,16 @@ class CC100DataModule(BaseDataModule):
                     download_file(single_language, self.data_dir)
                 log.info("Start Decompressing %s" % file_path_compressed)
                 decompress_xz(file_path_compressed)
+
+    def construct_path_to_files(self):
+        file_type = ".txt"
+        for single_language in self.languages:
+            file_path_txt = os.path.join(self.data_dir, single_language + file_type)
             self.paths_to_files[single_language] = file_path_txt
 
     # TODO: Move to Collator
     def load_dataset_iterable(self, paths_to_files):
-
+        self.construct_path_to_files()
         dataset_lst = {}
         for language, path in paths_to_files.items():
             language_dataset = load_dataset('text', data_files={'train': path}, split='train', streaming=True)
@@ -91,3 +96,4 @@ class CC100DataModule(BaseDataModule):
 
             dataset_lst[language] = tokenized_dataset
         return dataset_lst
+

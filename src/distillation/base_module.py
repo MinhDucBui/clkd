@@ -78,16 +78,15 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
     def initialize_teacher(self):
         self.teacher_tokenizer, self._teacher = initialize_teacher_or_student(self.teacher_cfg)
-        if torch.cuda.is_available():
-            self._teacher = self._teacher.to(device='cuda')
         self._teacher.eval()
 
     def initialize_student_components(self):
         for model_name, model_cfg in self.students_model_cfg.items():
             tokenizer, model = initialize_teacher_or_student(model_cfg)
-            if torch.cuda.is_available():
-                model = model.to(device='cuda')
+            exec("self.%s = %s" % (model_name, "model"))
             embeddings = initialize_embeddings(model_cfg)
+            for language, embedding in embeddings.items():
+                exec("self.%s = %s" % (model_name + "." + language, "embedding"))
             self.model.append(model)
             self.embeddings.append(embeddings)
             self.student_tokenizers.append(tokenizer)
@@ -152,7 +151,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                                                                    remove_additional_keys=["labels"])
                     # MaskedLMOutput --> OrderedDict
                     self.teacher_outputs[language] = self._teacher.forward(**full_batch)  # (bs, seq_length, voc_size)
-
         abs_loss = 0
         # Get the language of the model and get the corresponding samples that are in the model (student) language
         model_languages = get_model_language(model_idx, self.student_mapping)
@@ -172,7 +170,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
             # DEBUG:
             # debug_embedding_updating(self.model, model_idx, batch_idx, self.test, self.test1, language)
-
             student_outputs = self.model[model_idx](**full_batch)  # (bs, seq_length, voc_size)
 
             # Calculate Loss and Log
@@ -291,7 +288,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         for model_eval_cfg in self.validation_mapping:
             logger_name = model_eval_cfg["logger_name"]
             output_step = []
-
             # Loop through all validation step outputs. In each step, outputs for different metrics could be
             # available. E.g. step one has perplexity for language hh and mn on the validation dataset (hh, mn)
             for value in validation_step_outputs:
