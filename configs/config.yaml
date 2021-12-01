@@ -31,9 +31,9 @@ students:
     # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
     # Order is determined by order of listed item
     student_0:
-      languages: [ "sl" ]
+      languages: [ "eo" ]
     student_1:
-      languages: [ "cs" ]
+      languages: [ "af" ]
 
   weight_sharing_across_students: false
   # Naming convention: ( ( {Student Name}, {Layer Number} ), ( {Student Name}, {Layer Number}) )
@@ -43,7 +43,7 @@ students:
   # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
 
   embed_sharing:
-    - ((student_1, cs), (student_0, sl))
+    - ((student_1, af), (student_0, eo))
   # E.g. "in_each_model" <-> Share embeddings between languages in each model
   # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
   # E.g.
@@ -55,13 +55,13 @@ students:
     #retrieval: null
     retrieval:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_1, cs), (student_0, sl))
+        - ((student_1, af), (student_0, eo))
 
     # mlm: null
     mlm:
       aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-        - ((student_1, cs), (student_0, sl))
+        - ((student_1, af), (student_0, eo))
 
 
 datamodule:
@@ -75,9 +75,9 @@ trainer:
   log_every_n_steps: 10
   val_check_interval: 100
   max_steps: 1000
-  gpus: 2
+  gpus: 0
   num_nodes: 1
-  strategy: ddp
+ # strategy: ddp
 
 
 # Random Seed

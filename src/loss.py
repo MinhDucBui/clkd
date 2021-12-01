@@ -60,14 +60,15 @@ class LossHintonKD(nn.Module):  # custom loss_f should inherit from nn.Module
 
 
 class TinyBertLoss(LossHintonKD):
-    def __init__(self, temperature, alpha, loss_weighting):
+    def __init__(self, temperature, alpha, loss_regularization, mapping=None):
         super().__init__(temperature, alpha)
         self.temperature = temperature
         self.alpha = alpha
-        self.emb_loss_param = loss_weighting['emb_loss_param']
-        self.hidden_loss_param = loss_weighting['hidden_loss_param']
-        self.att_loss_param = loss_weighting['att_loss_param']
-        self.kd_loss_param = loss_weighting['kd_loss_param']
+        self.emb_loss_param = loss_regularization.emb_loss
+        self.hidden_loss_param = loss_regularization.hidden_loss
+        self.att_loss_param = loss_regularization.att_loss
+        self.kd_loss_param = loss_regularization.kd_loss
+        self.layer_mapping = mapping
 
     def forward(self, student_outputs, teacher_outputs, labels):
 
@@ -78,14 +79,18 @@ class TinyBertLoss(LossHintonKD):
             teacher_outputs[
                 'hidden_states']) - 1) % mapping_factor == 0, "Not able to map teacher layers to student layers. Change the number of student's layers."
 
-        # Create mapping dict
-        mapping_hid = [(0, 0)]
-        for i in range(1, len(student_outputs['hidden_states'])):
-            mapping_hid.append(tuple((i, i * mapping_factor)))
+        if not self.layer_mapping:
+            # Create mapping dict
+            mapping_hid = {0: 0}
+            for i in range(1, len(student_outputs['hidden_states'])):
+                mapping_hid[i] = i * mapping_factor
 
-        mapping_att = mapping_hid[1:]
-        mapping_att = [(x - 1, y - 1) for (x, y) in mapping_att]
-        # log.info(f"Mapping created for distilled student <{mapping}>")
+            mapping_att = mapping_hid[1:]
+            mapping_att = [(x - 1, y - 1) for (x, y) in mapping_att]
+
+        else:
+            mapping_hid = self.layer_mapping
+            mapping_att = {key - 1: value - 1 for (key, value) in mapping_hid.items()}
 
         # Embedding loss
         emb_loss = F.mse_loss(teacher_outputs['hidden_states'][0], student_outputs['hidden_states'][0])
@@ -94,20 +99,18 @@ class TinyBertLoss(LossHintonKD):
         hidden_loss = 0
         att_loss = 0
 
-        for j in mapping_hid[1:]:
-            hidden_loss += F.mse_loss(teacher_outputs['hidden_states'][j[1]], student_outputs['hidden_states'][j[0]])
+        for key, value in mapping_hid.items():
+            hidden_loss += F.mse_loss(teacher_outputs['hidden_states'][value], student_outputs['hidden_states'][key])
 
-        for j in mapping_att:
-            hidden_loss += F.mse_loss(teacher_outputs['hidden_states'][j[1]], student_outputs['hidden_states'][j[0]])
-
+        for key, value in mapping_att.items():
             # For faster convergence, very small attention scores are set to 0.
-            att_teacher = torch.where(teacher_outputs['attentions'][j[1]] <= 1e-2,
-                                      torch.zeros_like(teacher_outputs['attentions'][j[1]]),
-                                      teacher_outputs['attentions'][j[1]])
+            att_teacher = torch.where(teacher_outputs['attentions'][value] <= 1e-2,
+                                      torch.zeros_like(teacher_outputs['attentions'][value]),
+                                      teacher_outputs['attentions'][value])
 
-            att_student = torch.where(student_outputs['attentions'][j[0]] <= 1e-2,
-                                      torch.zeros_like(student_outputs['attentions'][j[0]]),
-                                      student_outputs['attentions'][j[0]])
+            att_student = torch.where(student_outputs['attentions'][key] <= 1e-2,
+                                      torch.zeros_like(student_outputs['attentions'][key]),
+                                      student_outputs['attentions'][key])
 
             att_loss += F.mse_loss(att_teacher, att_student)
 

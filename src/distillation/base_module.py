@@ -63,18 +63,19 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         pl.LightningModule.__init__(self)
         super().__init__()
 
-        # Init Students
-        self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
-        self.initialize_student_components()
-
         # Init Teacher Model
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
         self.initialize_teacher()
 
+        # Init Students
+        self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
+        self.initialize_student_components()
+
         # Init Data Module
         log.info(f"Instantiating datamodule")
         self.initialize_datamodule()
+        print('break')
 
     def initialize_teacher(self):
         self.teacher_tokenizer, self._teacher = initialize_teacher_or_student(self.teacher_cfg)
@@ -82,7 +83,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
     def initialize_student_components(self):
         for model_name, model_cfg in self.students_model_cfg.items():
-            tokenizer, model = initialize_teacher_or_student(model_cfg)
+            tokenizer, model = initialize_teacher_or_student(model_cfg, self._teacher)
             exec("self.%s = %s" % (model_name, "model"))
             embeddings = initialize_embeddings(model_cfg)
             for language, embedding in embeddings.items():
@@ -256,6 +257,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                                                                batch,
                                                                self.language_mapping,
                                                                remove_additional_keys=[])
+
                 if cleaned_batch["input_ids"].nelement() == 0:
                     continue
 

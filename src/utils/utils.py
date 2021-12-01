@@ -112,6 +112,7 @@ def get_subset_cleaned_batch(model, model_language, batch, language_mapping, rem
     subset_batch, idx = get_language_subset_batch(batch,
                                                   language_mapping,
                                                   model_language)
+
     cleaned_batch = keep_only_model_forward_arguments(model,
                                                       subset_batch,
                                                       remove_additional_keys=remove_additional_keys)

@@ -1,6 +1,7 @@
 _recursive_: False
-_target_: src.models.model.get_bert
+_target_: src.models.model.get_model
 
+teacher: None
 pretrained_model_name_or_path: "bert-base-cased"
 use_pretrained_weights: true
 cfg:

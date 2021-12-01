@@ -1,9 +1,13 @@
-_target_: src.loss.TinyBertLoss
+_target_: src.loss.TinyLoss
 temperature: 4.0
 alpha: 0.5
 
-loss_weighting:
-  emb_loss_param: 1
-  hidden_loss_param: 1
-  att_loss_param: 1
-  kd_loss_param: 1
+loss_regularization:
+  emb_loss: 0.2
+  hidden_loss: 0.2
+  att_loss: 0.2
+  kd_loss: 0.4
+
+mapping:
+  { 1: 2, 2: 4}
+# It always makes sense to map embedding layer of teacher to embedding layer of student, thus mapping includes only intermediate layers, skipping 0: 0 key, value pair
