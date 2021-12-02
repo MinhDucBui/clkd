@@ -40,15 +40,24 @@ class TatoebaDataModule(BaseDataModule):
         """
         # download with Huggingface datasets
         for language_pair in self.languages:
-            dataset = load_dataset_builder("tatoeba", lang1=language_pair[0], lang2=language_pair[1])
-            dataset.download_and_prepare()
+            try:
+                dataset = load_dataset_builder("tatoeba", lang1=language_pair[0], lang2=language_pair[1])
+                dataset.download_and_prepare()
+            except FileNotFoundError:
+                language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
+                dataset = load_dataset_builder("tatoeba", lang1=language_pair[0], lang2=language_pair[1])
+                dataset.download_and_prepare()
 
     def setup(self, stage: Optional[str] = None):
 
         split_samples = '{}[0:{}]'.format("train", self.max_length)
         index = 0
         for language_pair in self.languages:
-            dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
+            try:
+                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
+            except FileNotFoundError:
+                language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
+                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
             src = preprocess_tatoeba(dataset, self.tokenizer, language_pair[0], self.language_mapping)
             trg = preprocess_tatoeba(dataset, self.tokenizer, language_pair[1], self.language_mapping)
 

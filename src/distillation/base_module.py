@@ -232,8 +232,10 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         # Go into self.validation_mapping and get which model should be validated (given language and task from
         # previous step) and get the evaluation instructions.
+        # Order of languages does not matter
         models_cfg = [single_model for single_model in self.validation_mapping
-                      if single_model["dataset"] == language_pair and single_model["task_name"] == task_name]
+                      if set(single_model["dataset"]) == set(language_pair)
+                      and single_model["task_name"] == task_name]
 
         for model_cfg in models_cfg:
 
