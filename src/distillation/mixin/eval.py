@@ -111,7 +111,7 @@ class EvalMixin:
             if val is not None:
                 ret[k] = val
             else:
-                raise AssertionError(f"{k} not found in {var}")
+                raise AssertionError(f'{k} not found in {var}')
         return ret
 
     def collect_step_output(

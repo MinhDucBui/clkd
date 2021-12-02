@@ -1,5 +1,5 @@
 defaults:
-  - model: automodel
+  - model: from_teacher
   - tokenizer: autotokenizer
   - loss: kdloss
   - optimizer: adamw

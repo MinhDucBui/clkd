@@ -1,4 +1,6 @@
-_target_: src.models.model.get_distillbert
+_target_: src.models.model.get_model
+
+teacher: None
 pretrained_model_name_or_path: "distilbert-base-uncased"
 use_pretrained_weights: true
 cfg:

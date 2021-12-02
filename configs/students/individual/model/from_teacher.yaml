@@ -1,15 +1,16 @@
+_target_: src.models.model.get_tiny_model
+
 defaults:
-  - ../tokenizer@tokenizer: autotokenizer.yaml
+  - automodel.yaml
 
-model:
-  _target_: src.models.model.get_automodel
+teacher: None
 
-  pretrained_model_name_or_path: ${teacher.model.pretrained_model_name_or_path}
-  use_pretrained_weights: ${teacher.model.use_pretrained_weights}
+cfg:
+  hidden_size: 288 # must be dividable by no. of heads!
+  num_hidden_layers: 2
 
-  output_hidden_states: ${teacher.model.output_hidden_states}
-  output_attentions: ${teacher.model.output_attentions}
+weights_from_teacher:
+  embeddings: True
+  transformer_blocks: False
 
-  # Parameters to override for derivation of student from teacher
-  n_layers: 3
-  hidden_dim: 786
+mapping: { 1: 2, 2: 4} # TODO: Allowing for using other losses?
