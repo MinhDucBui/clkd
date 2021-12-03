@@ -1,5 +1,5 @@
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 
 def config_callback(cfg: DictConfig, cb_cfg: DictConfig) -> DictConfig:
@@ -8,7 +8,7 @@ def config_callback(cfg: DictConfig, cb_cfg: DictConfig) -> DictConfig:
     Hydra excels at depth-first, bottom-up config resolution. However,
     such a paradigm does not always allow you to elegantly express scenarios
     that are very relevant in experimentation. One instance, where :obj:`trident`
-    levers :obj:`config_callback`s is the `Huggingface datasets <https://huggingface.co/docs/datasets/>`_ integration.
+    levers :obj:`config_callback` is the `Huggingface datasets <https://huggingface.co/docs/datasets/>`_ integration.
 
     An example configuration may look like follows:
 
@@ -21,7 +21,7 @@ def config_callback(cfg: DictConfig, cb_cfg: DictConfig) -> DictConfig:
               _target_: datasets.load.load_dataset
               #     trident-integration into huggingface datasets
               #     to lever dataset methods within yaml configuration
-              _method_: 
+              _method_:
                 function:
                   _target_: src.utils.hydra.partial
                   _partial_: src.datamodules.utils.preprocessing.text_classification
@@ -47,15 +47,12 @@ def config_callback(cfg: DictConfig, cb_cfg: DictConfig) -> DictConfig:
                 lang: de
                 split: "test"
 
-
     Args:
-        cfg: 
-        cb_cfg: 
+        cfg:
+        cb_cfg:
 
     Returns:
-        DictConfig: 
 
-    .. seealso:: :py:func:`src.utils.hydra.expand`, :py:func:`src.utils.hydra.instantiate_and_apply`, :py:func:`src.datamodule.utils.load_dataset`
     """
     for key in cb_cfg:
         cfg = hydra.utils.call(cb_cfg.get(key), cfg=cfg, cfg_key=key)

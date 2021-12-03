@@ -208,12 +208,12 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         with the corresponding evaluation instructions.
 
         Workflow:
-        -> Get language and task for current validation set with index dataloader_idx
-        -> Go into self.validation_mapping and get which model should be validated (given language and task from
-        previous step) and get the evaluation instructions.
-        -> Loop through all models that are being validated
-            -> Check for "eval_with" (another model validated with the current model, e.g. retrieval task)
-            -> Execute evaluation instructions for the model (and eval_with if it exists)
+
+        * Get language and task for current validation set with index dataloader_idx
+        * Go into self.validation_mapping and get which model should be validated (given language and task from previous step) and get the evaluation instructions.
+        * Loop through all models that are being validated
+            * Check for "eval_with" (another model validated with the current model, e.g. retrieval task)
+            * Execute evaluation instructions for the model (and eval_with if it exists)
 
         Args:
             batch:
@@ -277,10 +277,10 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         """Aggregate all validation step outputs and calculate metric (if epoch_end=True)
 
         Workflow:
-        -> Loop through all validation step outputs. In each step, outputs for different metrics could be
-           available. E.g. step one has perplexity for language hh and mn on the validation dataset (hh, mn)
-            -> Loop through the outputs for each metric
-                -> Get the corresponding evaluation instructions and execute them
+
+        * Loop through all validation step outputs. In each step, outputs for different metrics could be available. E.g. step one has perplexity for language hh and mn on the validation dataset (hh, mn)
+            * Loop through the outputs for each metric
+                * Get the corresponding evaluation instructions and execute them
 
         Args:
             validation_step_outputs:

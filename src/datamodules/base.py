@@ -12,13 +12,12 @@ import sys
 
 
 class BaseDataModule(LightningDataModule, ABC):
-    """
-    The base class for all datamodules.
-    TODO:
-        * Support Sampler
+    """The base class for all datamodules.
+
     Args:
         collate_fn (:obj:`omegaconf.dictconfig.DictConfig`):
             Needs to return a :obj:`Callable` that processes a batch returned by the :obj:`DataLoader`.
+
             .. seealso:: :py:meth:`src.modules.base.TridentModule.forward`, :py:meth:`src.modules.base.TridentModule.training_step`, :repo:`MNLI config <configs/datamodule/mnli.yaml>`
         batch_size (:obj:`int`):
             The batch size returned by your :obj:`DataLoader`
@@ -26,6 +25,7 @@ class BaseDataModule(LightningDataModule, ABC):
             .. seealso:: `DataLoader documentation <https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader>`_
         num_workers (:obj:`int`):
             The number of workers for your :obj:`DataLoader`
+
             .. seealso:: `DataLoader documentation <https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader>`_
         train_collate_fn (:obj:`omegaconf.dictconfig.DictConfig`, `optional`):
             If passed, replaces `collate_fn` for the train dataloader.
@@ -98,22 +98,25 @@ class BaseDataModule(LightningDataModule, ABC):
     def setup(self):
         """Sets up `self.data_{train, val, test}` datasets that are fed to the corresponding :obj:`DataLoader` instances.
         Typically wraps `datasets <https://huggingface.co/docs/datasets/>`_ in `setup` method of dataset.
-        .. code-block:: python
+        ::
+
             def setup(self, stage: Optional[str] = None):
-                    if stage in (None, "fit"):
-                        dataset = load_dataset("glue", "mnli")
-                        dataset = dataset.map(self.preprocess, num_proc=cpu_count())
-                        dataset = dataset.rename_column("label", "labels")
-                        self.data_train = dataset["train"]
-                        self.data_val = concatenate_datasets(
-                            [dataset["validation_mismatched"], dataset["validation_matched"]]
-                        )
-                        # if stage in (None, "test"):
-                        self.data_test = self.data_val
+                if stage in (None, "fit"):
+                    dataset = load_dataset("glue", "mnli")
+                    dataset = dataset.map(self.preprocess, num_proc=cpu_count())
+                    dataset = dataset.rename_column("label", "labels")
+                    self.data_train = dataset["train"]
+                    self.data_val = concatenate_datasets(
+                        [dataset["validation_mismatched"], dataset["validation_matched"]]
+                    )
+                    # if stage in (None, "test"):
+                    self.data_test = self.data_val
+
         Args:
             self: datamodule
         Raises:
             NotImplementedError: if method is not implemented in sub-classes
+
         .. seealso:: :py:meth:`src.datamodules.mnli.MNLIDataModule.setup`
         """
         raise NotImplementedError(f"Please implement setup for {type(self)}")
