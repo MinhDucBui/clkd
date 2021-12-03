@@ -43,7 +43,7 @@ main = f"{repo}tree/main/"
 
 extlinks = {
     "repo": (f"{main}%s", None),
-    "gh-pages": ("fdschmidt93.github.io/trident/", None),
+    "gh-pages": ("MinhDucBui.github.io/trident/", None),
 }
 
 # TODO(fdschmidt93): somewhat hacky to generate docs in minimal env with less warnings

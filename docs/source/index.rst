@@ -7,11 +7,6 @@
    :maxdepth: 2
    :caption: Contents:
     
-   readme
-   customization
-   Contributing <CONTRIBUTING>
-   trident.core
-    
 
 
 Indices and tables
