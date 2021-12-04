@@ -9,7 +9,6 @@ import sys
 import hydra
 
 
-
 class JW300DataModule(BaseDataModule):
     def __init__(
             self,

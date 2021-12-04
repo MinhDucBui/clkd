@@ -71,11 +71,11 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
         {"model_name": model name,
          "model_language": corresponding model languages,
          "model_idx": corresponding model ID,
-         "eval_with", If another model should also be evaluted with the current model,
+         "eval_with", If another model should also be evaluated with the current model,
          "task_name": the task name, "dataset": the corresponding dataset,
          "metric_name": the metric, e.g. perplexity,
          "cfg": evaluation instructions (eval_cfg),
-         "current_language": the language that the model is being evaluated on (e.g. only english, model can be multilingual
+         "current_language": language the model is being evaluated on (e.g. only english, model can be multilingual)
          }
 
     Args:

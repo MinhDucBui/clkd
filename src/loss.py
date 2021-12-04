@@ -21,7 +21,7 @@ class LossHintonKD(nn.Module):  # custom loss_f should inherit from nn.Module
         self.alpha = alpha
 
     def get_loss(self, student_outputs, teacher_outputs, labels):
-        # Adapted from https://github.com/huggingface/pytorch-transformers/blob/master/examples/distillation/distiller.py
+        # From https://github.com/huggingface/pytorch-transformers/blob/master/examples/distillation/distiller.py
 
         # Get Logits
         teacher_logits = teacher_outputs["logits"]
@@ -77,7 +77,8 @@ class TinyBertLoss(LossHintonKD):
         # Assure that layers can be mapped
         assert (len(
             teacher_outputs[
-                'hidden_states']) - 1) % mapping_factor == 0, "Not able to map teacher layers to student layers. Change the number of student's layers."
+                'hidden_states']) - 1) % mapping_factor == 0, "Not able to map teacher layers to student layers. " \
+                                                              "Change the number of student's layers."
 
         if not self.layer_mapping:
             # Create mapping dict
@@ -117,10 +118,8 @@ class TinyBertLoss(LossHintonKD):
         # Add KD loss
         kd_loss = self.get_loss(student_outputs, teacher_outputs, labels)
 
-        loss = self.emb_loss_param * emb_loss \
-               + self.hidden_loss_param * hidden_loss \
-               + self.att_loss_param * att_loss \
-               + self.kd_loss_param * kd_loss
+        loss = self.emb_loss_param * emb_loss + self.hidden_loss_param * hidden_loss \
+               + self.att_loss_param * att_loss + self.kd_loss_param * kd_loss
 
         return loss
 

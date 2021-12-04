@@ -1,6 +1,5 @@
 from typing import Optional
 from datasets import load_dataset
-import os.path
 from src.utils.utils import get_logger, add_language_tag_tokenizer, add_language_tag
 from src.datamodules.base import BaseDataModule
 
@@ -29,7 +28,6 @@ class CC100DataModule(BaseDataModule):
         self.t_tokenizer = t_tokenizer
         # TODO: Different Tokenizer for student/teacher
         self.tokenizer = self.t_tokenizer
-
 
     @property
     def num_labels(self) -> int:

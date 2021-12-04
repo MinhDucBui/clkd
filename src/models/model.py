@@ -1,4 +1,3 @@
-from transformers import AutoModelForMaskedLM, AutoConfig
 import hydra
 import torch.nn as nn
 from omegaconf import OmegaConf, open_dict
@@ -85,7 +84,7 @@ def get_tiny_model(pretrained_model_name_or_path, teacher, mapping, weights_from
 
         def init_weights_from_teacher(self):
             """
-            The function works assuming that name of the module consists of following pattern --> "*.layer.no_of_layer.*"
+            The function works assuming that name of the module consists of following pattern-->"*.layer.no_of_layer.*"
             """
 
             # Copy teacher weights from corresponding transformer lays
@@ -152,4 +151,4 @@ def get_model(pretrained_model_name_or_path, use_pretrained_weights, cfg=None, *
         architecture_cfg = config_class(**cfg)
         model = AutoModelForMaskedLM.from_config(architecture_cfg)
 
-    return model, architecture_cfg # Why do we output here config too?
+    return model, architecture_cfg

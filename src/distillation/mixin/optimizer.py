@@ -1,4 +1,3 @@
-from pytorch_lightning import LightningModule, Trainer
 import hydra
 import sys
 from src.utils import utils

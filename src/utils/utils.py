@@ -1,17 +1,19 @@
 import logging
+import lzma
+import os.path
+import shutil
+import sys
 import warnings
+from pathlib import Path
 from typing import List, Sequence
-import torch
+
 import pytorch_lightning as pl
+import requests
 import rich.syntax
 import rich.tree
+import torch
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning.utilities import rank_zero_only
-from pathlib import Path
-import os.path
-import sys
-import requests
-import lzma, shutil
 
 
 def compare_models(model_1, model_2):
@@ -21,12 +23,13 @@ def compare_models(model_1, model_2):
             pass
         else:
             models_differ += 1
-            if (key_item_1[0] == key_item_2[0]):
+            if key_item_1[0] == key_item_2[0]:
                 print('Mismtach found at', key_item_1[0])
             else:
                 raise Exception
     if models_differ == 0:
         print('Models match perfectly! :)')
+
 
 def add_language_tag(dataset, language):
     return dataset.map(lambda x: dict(x, **{"language": language}))
@@ -108,7 +111,9 @@ def get_model_language(model_idx, student_mapping):
     return student_mapping["id_model"][model_idx]["languages"]
 
 
-def get_subset_cleaned_batch(model, model_language, batch, language_mapping, remove_additional_keys=["labels"]):
+def get_subset_cleaned_batch(model, model_language, batch, language_mapping, remove_additional_keys=None):
+    if remove_additional_keys is None:
+        remove_additional_keys = ["labels"]
     subset_batch, idx = get_language_subset_batch(batch,
                                                   language_mapping,
                                                   model_language)

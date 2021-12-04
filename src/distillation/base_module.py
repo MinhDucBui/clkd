@@ -1,5 +1,3 @@
-import copy
-
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
@@ -8,8 +6,8 @@ from omegaconf import DictConfig
 from src.utils import utils
 from src.models.model import initialize_teacher_or_student, initialize_embeddings, change_embedding_layer
 import hydra
-from src.utils.utils import keep_only_model_forward_arguments, get_model_language, compare_models, \
-    name_model_for_logger, append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
+from src.utils.utils import keep_only_model_forward_arguments, get_model_language, name_model_for_logger, \
+    append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
 from transformers.tokenization_utils_base import BatchEncoding
@@ -203,7 +201,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         return output
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        """Each validation step has multiple validation dataloaders (indexed with dataloader_idx).
+        """Each validation step has multiple validation dataloader (indexed with dataloader_idx).
         self.validation_mapping contains information about which model is being validated on which task and dataset
         with the corresponding evaluation instructions.
 
@@ -306,4 +304,3 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             self.evaluation = model_eval_cfg["cfg"]
             self.metrics = self.evaluation.metrics
             self.eval_epoch_end(logger_name, output_step)
-
