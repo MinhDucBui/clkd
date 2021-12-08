@@ -1,3 +1,5 @@
+import copy
+
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
@@ -28,6 +30,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             **kwargs,
     ):
 
+        # Sanity Check Config
+        assert_functions(copy.deepcopy(cfg))
+
         self.save_hyperparameters()
         self.cfg = cfg
         self.teacher_cfg = cfg.teacher
@@ -47,10 +52,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         # Initialize Evaluation
         self.evaluation_cfg = self.students_cfg.evaluation
         self.evaluation_cfg = initialize_evaluation_cfg(self.evaluation_cfg)
-
-        # Sanity Check Config
-        assert_functions(self.students_model_cfg, self.embedding_sharing_cfg, self.weight_sharing_cfg,
-                         self.evaluation_cfg)
 
         # Map language to id, student to languages and get validation tasks
         self.language_mapping, self.student_mapping, self.validation_mapping \
@@ -174,8 +175,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             # Calculate Loss and Log
             abs_loss += self.loss[model_idx](student_outputs, subset_teacher_output, single_batch["labels"])
 
-        model_name_logger = name_model_for_logger(model_languages)
-        tqdm_dict = {model_name_logger + "/" + "train" + "/" + "_".join(model_languages) + '/train_loss': abs_loss}
+        model_name = self.student_mapping["id_model"][model_idx]["model_name"]
+        tqdm_dict = {"train" + "/" + model_name + '/train_loss': abs_loss}
         output = {
             'loss': abs_loss,
             'progress_bar': tqdm_dict,

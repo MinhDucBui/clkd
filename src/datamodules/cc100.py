@@ -70,11 +70,11 @@ class CC100DataModule(BaseDataModule):
                     log.info("No txt or txt.xz file for {} exist! Proceed to download file...".format(single_language))
                     log.info("Downloading %s" % single_language)
                     download_file(single_language, self.data_dir)
-                log.info("Start Decompressing %s" % file_path_compressed)
-                decompress_xz(file_path_compressed)
+                #log.info("Start Decompressing %s" % file_path_compressed)
+                #decompress_xz(file_path_compressed)
 
     def construct_path_to_files(self):
-        file_type = ".txt"
+        file_type = ".txt.xz"
         for single_language in self.languages:
             file_path_txt = os.path.join(self.data_dir, single_language + file_type)
             self.paths_to_files[single_language] = file_path_txt
