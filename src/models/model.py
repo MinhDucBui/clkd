@@ -20,10 +20,10 @@ def change_embedding_layer(model, model_idx, embeddings, language):
         model.base_model.embeddings = embeddings[model_idx][language]
 
 
-def initialize_embeddings(cfg):
+def initialize_embeddings(cfg, teacher=None):
     embeddings = {}
     for language in cfg.languages:
-        model, _ = hydra.utils.instantiate(cfg.model)
+        model, _ = hydra.utils.instantiate(cfg.model, teacher=teacher)
         # if torch.cuda.is_available():
         #    model.base_model.embeddings = model.base_model.embeddings.to(device='cuda')
         if model.__class__.__name__ == 'TinyModel':
@@ -73,8 +73,8 @@ def get_tiny_model(pretrained_model_name_or_path, teacher, mapping, weights_from
             self.fit_size = fit_size
             self.mapping = mapp
             self.teacher_model = teacher_model
-            self.base = AutoModelForMaskedLM.from_config(config)
 
+            self.base = AutoModelForMaskedLM.from_config(config)
             # It's possible to init student's weights from teacher only if both agree on hidden dimensionality
             if self.fit_size == self.student_hidden_size:
                 self.init_weights_from_teacher()
@@ -88,7 +88,7 @@ def get_tiny_model(pretrained_model_name_or_path, teacher, mapping, weights_from
             """
 
             # Copy teacher weights from corresponding transformer lays
-            if self.init_weights.transfoemer_blocks:
+            if self.init_weights.transformer_blocks:
                 new_params = {}
                 for key, value in self.mapping.items():
                     for name_t, param_t in self.teacher_model.named_parameters():
@@ -97,8 +97,9 @@ def get_tiny_model(pretrained_model_name_or_path, teacher, mapping, weights_from
                             name_s = name_t.replace(layer, ''.join(['layer.', str(key), '.']))
                             new_params[name_s] = param_t
 
-                for name_s, param_t in self.base_model.named_parameters():
+                for name_s, param_t in self.base.named_parameters():
                     if name_s in new_params:
+                        print("Initialize {} from teachers weight".format(name_s))
                         param_t.data = new_params[name_s].data
 
             # Copy teacher weights from embedding layer
@@ -108,9 +109,10 @@ def get_tiny_model(pretrained_model_name_or_path, teacher, mapping, weights_from
                     if 'embeddings' in name_t:
                         new_emb_params[name_t] = param_t
 
-                for name_s, param_s in self.base_model.named_parameters():
+                for name_s, param_s in self.base.named_parameters():
                     for key, value in new_emb_params.items():
                         if name_s == key:
+                            print("Initialize {} from teachers weight".format(name_s))
                             param_s.data = value.data
 
         def forward(self, input_ids, token_type_ids=None,

@@ -66,7 +66,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
         self.initialize_teacher()
-
+        
         # Init Students
         self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
         self.initialize_student_components()
@@ -84,7 +84,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         for model_name, model_cfg in self.students_model_cfg.items():
             tokenizer, model = initialize_teacher_or_student(model_cfg, self._teacher)
             exec("self.%s = %s" % (model_name, "model"))
-            embeddings = initialize_embeddings(model_cfg)
+            embeddings = initialize_embeddings(model_cfg, self._teacher)
             for language, embedding in embeddings.items():
                 exec("self.%s = %s" % (model_name + "." + language, "embedding"))
             self.model.append(model)
