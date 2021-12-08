@@ -1,5 +1,5 @@
 from typing import Optional
-from datasets import load_dataset, interleave_datasets
+from datasets import load_dataset
 import os.path
 from src.utils.utils import get_logger, download_file, decompress_xz, add_language_tag_tokenizer, add_language_tag
 from src.datamodules.base import BaseDataModule
@@ -96,4 +96,3 @@ class CC100DataModule(BaseDataModule):
 
             dataset_lst[language] = tokenized_dataset
         return dataset_lst
-

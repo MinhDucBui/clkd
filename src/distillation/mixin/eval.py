@@ -1,5 +1,4 @@
 from typing import Callable, Union
-import torch
 import hydra
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
@@ -203,4 +202,3 @@ class EvalMixin:
 
     def test_epoch_end(self, test_step_outputs: list):
         return self.eval_epoch_end("test", test_step_outputs)
-
