@@ -1,3 +1,5 @@
+import copy
+
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
@@ -28,6 +30,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             **kwargs,
     ):
 
+        # Sanity Check Config
+        assert_functions(copy.deepcopy(cfg))
+
         self.save_hyperparameters()
         self.cfg = cfg
         self.teacher_cfg = cfg.teacher
@@ -47,10 +52,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         # Initialize Evaluation
         self.evaluation_cfg = self.students_cfg.evaluation
         self.evaluation_cfg = initialize_evaluation_cfg(self.evaluation_cfg)
-
-        # Sanity Check Config
-        assert_functions(self.students_model_cfg, self.embedding_sharing_cfg, self.weight_sharing_cfg,
-                         self.evaluation_cfg)
 
         # Map language to id, student to languages and get validation tasks
         self.language_mapping, self.student_mapping, self.validation_mapping \

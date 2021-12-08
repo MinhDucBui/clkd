@@ -1,10 +1,43 @@
-from src.utils.utils import convert_cfg_tuple
+from src.utils.utils import convert_cfg_tuple, initialize_evaluation_cfg
+from src.utils.mappings import create_model_mapping, create_validation_mapping
+import copy
 
 
-def assert_functions(students_cfg, embedding_sharing_cfg, weight_sharing_cfg, eval_cfg):
+def assert_functions(cfg):
+
+    # Extract configs
+    students_cfg = {}
+    for model_name, model_cfg in cfg.students.individual.items():
+        if "student_" not in model_name:
+            continue
+        students_cfg[model_name] = model_cfg
+    embedding_sharing_cfg = cfg.students.embed_sharing
+    weight_sharing_cfg = cfg.students.weight_sharing_across_students
+    eval_cfg = cfg.students["evaluation"]
+    eval_cfg = initialize_evaluation_cfg(eval_cfg)
+    if "callbacks" in cfg.keys() and "model_checkpoint" in cfg["callbacks"].keys():
+        model_checkpoint_cfg = cfg["callbacks"]["model_checkpoint"]
+        assert_model_checkpoint_cfg(students_cfg, eval_cfg, model_checkpoint_cfg)
+
+    # Assertion Functions
     assert_eval_cfg(students_cfg, eval_cfg)
     assert_embedding_cfg(students_cfg, embedding_sharing_cfg)
     assert_weight_sharing_cfg(students_cfg, weight_sharing_cfg)
+
+
+def assert_model_checkpoint_cfg(students_cfg, eval_cfg, model_checkpoint_cfg):
+    monitor_name = model_checkpoint_cfg["monitor"]
+    model_mapping = create_model_mapping(students_cfg)
+    logger_names = create_validation_mapping(eval_cfg, model_mapping, stage="val")
+    correct_logging_name = False
+    all_log_names = []
+    for log_name in logger_names:
+        log_name = log_name["logger_name"] + "/" + log_name["metric_name"]
+        if log_name == monitor_name:
+            correct_logging_name = True
+        all_log_names.append(log_name)
+    assert correct_logging_name, \
+        "ModelCheckpoint(monitor='{}') not found in the returned metrics: {}.".format(monitor_name, all_log_names)
 
 
 def assert_eval_cfg(students_cfg, eval_cfg):
