@@ -137,8 +137,7 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
                         logger_names.append(copy.deepcopy(new_item))
 
     for item in logger_names:
-        all_languages = item["current_language"] + [eval_tuple[1] for eval_tuple in item["eval_with"]]
-        item["logger_name"] = "/".join([name_model_for_logger(item["model_language"]), stage, item["task_name"],
-                                        "_".join(item["dataset"]) + "(dataset)", "_".join(all_languages)])
-
+        all_models = ["_".join([item["model_name"]] + item["current_language"])] \
+                    + [model_mapping["id_model"][eval_tuple[0]]["model_name"] + "_" + eval_tuple[1] for eval_tuple in item["eval_with"]]
+        item["logger_name"] = "/".join([stage, item["task_name"], "-".join(all_models)])
     return logger_names

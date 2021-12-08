@@ -174,8 +174,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             # Calculate Loss and Log
             abs_loss += self.loss[model_idx](student_outputs, subset_teacher_output, single_batch["labels"])
 
-        model_name_logger = name_model_for_logger(model_languages)
-        tqdm_dict = {model_name_logger + "/" + "train" + "/" + "_".join(model_languages) + '/train_loss': abs_loss}
+        model_name = self.student_mapping["id_model"][model_idx]["model_name"]
+        tqdm_dict = {"train" + "/" + model_name + '/train_loss': abs_loss}
         output = {
             'loss': abs_loss,
             'progress_bar': tqdm_dict,
