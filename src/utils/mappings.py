@@ -137,7 +137,12 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
                         logger_names.append(copy.deepcopy(new_item))
 
     for item in logger_names:
-        all_models = ["_".join([item["model_name"]] + item["current_language"])] \
-                    + [model_mapping["id_model"][eval_tuple[0]]["model_name"] + "_" + eval_tuple[1] for eval_tuple in item["eval_with"]]
+        eval_names = []
+        for eval_tuple in item["eval_with"]:
+            if eval_tuple[0] == "teacher":
+                eval_names.append(eval_tuple[0] + "_" + eval_tuple[1])
+            else:
+                eval_names.append(model_mapping["id_model"][eval_tuple[0]]["model_name"] + "_" + eval_tuple[1])
+        all_models = ["_".join([item["model_name"]] + item["current_language"])] + eval_names
         item["logger_name"] = "/".join([stage, item["task_name"], "-".join(all_models)])
     return logger_names

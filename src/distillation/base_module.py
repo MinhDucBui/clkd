@@ -70,7 +70,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         # Init Students
         self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
         self.initialize_student_components()
-
         # Init Data Module
         log.info(f"Instantiating datamodule")
         self.initialize_datamodule()
