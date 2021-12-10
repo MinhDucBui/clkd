@@ -66,11 +66,13 @@ class EvalMixin:
 
         self.evaluation = DictConfig({})
         self.metrics = DictConfig({})
-        for single_item in self.validation_mapping:
+        for index, single_item in enumerate(self.validation_mapping):
             # hparams used to fast-forward required attributes
             single_item["cfg"] = hydra.utils.instantiate(self.cfg.students.evaluation[single_item["task_name"]])
             for metric_name, metric in single_item["cfg"]["metrics"].items():
-                exec("self.%s = %s" % (single_item["model_name"] + "_" + single_item["task_name"] + "_" + metric_name, "metric['metric']"))
+                exec("self.%s = %s" % (single_item["model_name"] + "_" + single_item["task_name"] + "_" + metric_name \
+                                       + "_" + str(index), "metric['metric']"))
+        
             # pass identity if transform is not set
             for attr in ["batch", "outputs", "step_outputs"]:
                 if not callable(getattr(single_item["cfg"].apply, attr, None)):
