@@ -1,9 +1,9 @@
 from typing import Optional
-from torch.utils.data import ChainDataset
+from datasets.load import load_dataset_builder
 from datasets.arrow_dataset import concatenate_datasets
 from datasets.load import load_dataset
 from src.datamodules.base import BaseDataModule
-from src.utils.utils import add_language_tag_tokenizer, add_language_tag
+from src.utils.utils import add_language_tag_tokenizer
 import hydra
 
 
@@ -36,17 +36,15 @@ class TatoebaDataModule(BaseDataModule):
         Download MNLI from Huggingface datasets hub.
         See: https://huggingface.co/datasets/glue
         """
-        split_samples = '{}[0:{}]'.format("train", self.max_length)
-
         # download with Huggingface datasets
         for language_pair in self.languages:
             try:
-                load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1],
-                             split=split_samples, cache_dir=self.data_dir)
+                dataset = load_dataset_builder("tatoeba", lang1=language_pair[0], lang2=language_pair[1])
+                dataset.download_and_prepare()
             except FileNotFoundError:
                 language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
-                load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1],
-                             split=split_samples, cache_dir=self.data_dir)
+                dataset = load_dataset_builder("tatoeba", lang1=language_pair[0], lang2=language_pair[1])
+                dataset.download_and_prepare()
 
     def setup(self, stage: Optional[str] = None):
 
@@ -54,13 +52,10 @@ class TatoebaDataModule(BaseDataModule):
         index = 0
         for language_pair in self.languages:
             try:
-                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1],
-                                       streaming=True, cache_dir=self.data_dir, split="train")
+                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
             except FileNotFoundError:
                 language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
-                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1],
-                                       streaming=True, cache_dir=self.data_dir, split="train")
-
+                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
             src = preprocess_tatoeba(dataset, self.tokenizer, language_pair[0], self.language_mapping)
             trg = preprocess_tatoeba(dataset, self.tokenizer, language_pair[1], self.language_mapping)
 
@@ -73,7 +68,7 @@ class TatoebaDataModule(BaseDataModule):
 
                     self.val_collate_fn.append(hydra.utils.instantiate(self.val_collate_fn_dict[task_name],
                                                                        tokenizer=self.tokenizer)())
-                    self.data_val.append(ChainDataset([src, trg]))
+                    self.data_val.append(concatenate_datasets([src, trg]))
 
 
 def preprocess_tatoeba(dataset, tokenizer, language, language_mapping):
@@ -82,10 +77,8 @@ def preprocess_tatoeba(dataset, tokenizer, language, language_mapping):
 
     new_dataset = dataset.map(lambda x: split_text(x, language))
     new_dataset = new_dataset.remove_columns(["translation"]).remove_columns(["id"])
-    new_dataset = new_dataset.map(lambda example: {"text": ""} if example['text'] is None else example)
-    new_dataset = add_language_tag(new_dataset, language)
-    # https://github.com/huggingface/datasets/issues/2583
-    new_dataset = new_dataset.with_format("torch")
+    new_dataset = new_dataset.filter(lambda example: example['text'] is not None)
+    new_dataset = new_dataset.add_column("language", [language] * len(new_dataset))
     new_dataset = new_dataset.map(
         lambda x: add_language_tag_tokenizer(x, tokenizer, language_mapping)).remove_columns(["text"])
     return new_dataset
