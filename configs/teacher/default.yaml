@@ -1,5 +1,5 @@
 defaults:
-  - model: automodel.yaml
+  - model: xlmr.yaml
   - tokenizer: autotokenizer.yaml
 
 model:

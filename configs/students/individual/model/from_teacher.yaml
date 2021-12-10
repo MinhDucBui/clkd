@@ -6,11 +6,11 @@ defaults:
 teacher: None
 
 cfg:
-  hidden_size: 288 # must be dividable by no. of heads!
-  num_hidden_layers: 2
+  hidden_size: 768 # must be dividable by no. of heads!
+  num_hidden_layers: 4
 
 weights_from_teacher:
   embeddings: True
-  transformer_blocks: False
+  transformer_blocks: True
 
-mapping: { 1: 2, 2: 4} # TODO: Allowing for using other losses?
+mapping: {0: 0, 1: 2, 2: 4, 3: 6} # TODO: Allowing for using other losses?

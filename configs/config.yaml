@@ -17,7 +17,7 @@ defaults:
   - datamodule@datamodule.val: tatoeba.yaml
 
   # Utils
-  - callbacks: none.yaml # set this to null if you don't want to use callbacks
+  - callbacks: default.yaml # set this to null if you don't want to use callbacks
   - logger: tensorboard # set logger here or use command line (e.g. `python run.py logger=wandb`)
   - experiment: null
   - hydra: default.yaml
@@ -31,9 +31,9 @@ students:
     # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
     # Order is determined by order of listed item
     student_0:
-      languages: [ "eo" ]
+      languages: [ "en" ]
     student_1:
-      languages: [ "af" ]
+      languages: [ "tr" ]
 
   weight_sharing_across_students: false
   # Naming convention: ( ( {Student Name}, {Layer Number} ), ( {Student Name}, {Layer Number}) )
@@ -42,8 +42,8 @@ students:
   # - ((student_0, 6), (student_1, 5))
   # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
 
-  embed_sharing:
-    - ((student_1, af), (student_0, eo))
+  embed_sharing: 
+    - ((student_1, tr), (student_0, en))
   # E.g. "in_each_model" <-> Share embeddings between languages in each model
   # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
   # E.g.
@@ -55,29 +55,29 @@ students:
     #retrieval: null
     retrieval:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_1, af), (student_0, eo))
+        - ((student_1, tr), (student_0, en))
 
     # mlm: null
     mlm:
       aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-        - ((student_1, af), (student_0, eo))
+        - ((student_1, tr), (student_0, en))
 
 
 datamodule:
   val:
-    max_length: 300
-    batch_size: 2
+    max_length: 1000
+    batch_size: 1
   train:
     batch_size: 2
 
 trainer:
-  log_every_n_steps: 10
-  val_check_interval: 100
-  max_steps: 1000
-  gpus: 0
+  log_every_n_steps: 100
+  val_check_interval: 1000
+  max_steps: 100000
+  gpus: -1
   num_nodes: 1
- # strategy: ddp
+  strategy: ddp
 
 
 # Random Seed
@@ -90,13 +90,16 @@ seed: 42
 work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
-data_dir: ${work_dir}/data/
+data_dir: /pfs/work7/workspace/scratch/ma_mkuc-clkd_data
 
 # Path to CC100 Folder for MLM pretraining
 cc: ${data_dir}/cc100
 
 # Path to JW300 Folder for MLM Validation
 jw300: ${data_dir}/jw300
+
+# Path to Tatoeba Folder for Retrieval Validation
+tatoeba: ${data_dir}/tatoeba
 
 # use `python run.py debug=true` for easy debugging!
 # this will run 1 train, val and test loop with only 1 batch

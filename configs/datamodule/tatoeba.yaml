@@ -5,7 +5,7 @@ defaults:
   - /collate_fn: padding
 
 max_length: 1000
-data_dir: ${jw300}
+data_dir: ${tatoeba}
 batch_size: 4
 num_workers: 0
 pin_memory: False
