@@ -79,6 +79,8 @@ trainer:
   num_nodes: 1
   strategy: ddp
 
+callbacks:
+  monitor: "val/retrieval/student_1_eo-student_0_en/mrr"
 
 # Random Seed
 seed: 42
