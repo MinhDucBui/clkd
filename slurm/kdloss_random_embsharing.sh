@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --ntasks=1
-#SBATCH --job-name=kdloss_random
+#SBATCH --job-name=kdloss_random_embsharing
 #SBATCH --gres=gpu:8
 #SBATCH --mem=192000
 #SBATCH --time=35:00:00
@@ -15,7 +15,7 @@ echo "Program starts:  $now"
 # Activate conda env
 # srun $1
 # Run script
-srun python /home/ma/ma_ma/$SLURM_JOB_USER/clkd/run.py 
+srun python /home/ma/ma_ma/$SLURM_JOB_USER/clkd/run.py 'students.embed_sharing=["((student_turkish, tr), (student_english, en))"]'
 
 end=$(date +"%T")
 echo "Completed: $end"

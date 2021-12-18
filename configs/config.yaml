@@ -18,7 +18,7 @@ defaults:
 
   # Utils
   - callbacks: default.yaml # set this to null if you don't want to use callbacks
-  - logger: tensorboard # set logger here or use command line (e.g. `python run.py logger=wandb`)
+  - logger: wandb # set logger here or use command line (e.g. `python run.py logger=wandb`)
   - experiment: null
   - hydra: default.yaml
 
@@ -30,9 +30,9 @@ students:
   individual:
     # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
     # Order is determined by order of listed item
-    student_0:
+    student_english:
       languages: [ "en" ]
-    student_1:
+    student_turkish:
       languages: [ "tr" ]
 
   weight_sharing_across_students: false
@@ -42,8 +42,7 @@ students:
   # - ((student_0, 6), (student_1, 5))
   # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
 
-  embed_sharing: 
-    - ((student_1, tr), (student_0, en))
+  embed_sharing: "in_each_model"
   # E.g. "in_each_model" <-> Share embeddings between languages in each model
   # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
   # E.g.
@@ -55,13 +54,13 @@ students:
     #retrieval: null
     retrieval:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_1, tr), (student_0, en))
+        - ((student_turkish, tr), (student_english, en))
 
     # mlm: null
     mlm:
       aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-        - ((student_1, tr), (student_0, en))
+        - ((student_turkish, tr), (student_english, en))
 
 
 datamodule:
@@ -72,15 +71,16 @@ datamodule:
     batch_size: 2
 
 trainer:
-  log_every_n_steps: 100
-  val_check_interval: 1000
-  max_steps: 100000
+  log_every_n_steps: 200
+  val_check_interval: 2000
+  max_steps: 200000
   gpus: -1
   num_nodes: 1
   strategy: ddp
 
 callbacks:
-  monitor: "val/retrieval/student_1_eo-student_0_en/mrr"
+  model_checkpoint:
+    monitor: "val/retrieval/student_turkish_tr-student_english_en/mrr"
 
 # Random Seed
 seed: 42

@@ -10,7 +10,7 @@ cfg:
   num_hidden_layers: 4
 
 weights_from_teacher:
-  embeddings: True
-  transformer_blocks: True
+  embeddings: False
+  transformer_blocks: False
 
-mapping: {0: 0, 1: 2, 2: 4, 3: 6} # TODO: Allowing for using other losses?
+mapping: {0: 0, 1: 3, 2: 7, 3: 11} # TODO: Allowing for using other losses?
