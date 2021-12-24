@@ -68,6 +68,11 @@ def train(config: DictConfig) -> Optional[float]:
         callbacks=callbacks,
         logger=logger,
     )
+    
+    # Do first validation of model
+    log.info("Do one validation epoch before training.")
+    trainer.validate(model=distillation,
+                    datamodule=distillation.datamodule)
 
     # Train the model
     log.info("Starting training!")
