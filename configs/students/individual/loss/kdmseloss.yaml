@@ -4,12 +4,3 @@ mse_weight: 0.5
 temperature: 4.0
 alpha: 0.5
 reduction: "sum"
-
-loss_regularization:
-  emb_loss: 0.2
-  hidden_loss: 0.2
-  att_loss: 0.2
-  kd_loss: 0.4
-
-mapping: {0: 0, 1: 3, 2: 7, 3: 11}
-# It always makes sense to map embedding layer of teacher to embedding layer of student, thus mapping includes only intermediate layers, skipping 0: 0 key, value pair
