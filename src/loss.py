@@ -128,23 +128,20 @@ class TinyBertLoss(LossHintonKD):
 
 
 class RepresentationMSELoss(nn.Module):
-    def __init__(self, size_average=None, reduce=None, reduction='mean'):
+    def __init__(self, reduction='mean'):
         super().__init__()
-        self.size_average = size_average
-        self.reduce = reduce
         self.reduction = reduction
+        self.mse_loss = nn.MSELoss(reduction=self.reduction)
 
     def forward(self, student_outputs, teacher_outputs, labels=None):
 
         teacher_representations = teacher_outputs['hidden_states'][-1]
         student_representations = student_outputs['hidden_states'][-1]
-        mse_loss = nn.MSELoss(self.size_average, self.reduce, self.reduction)
         sum_token_mse = 0
         for i in range(student_representations.size(dim=1)):
-            sum_token_mse += mse_loss(student_representations[:, i, :], teacher_representations[:, i, :])
+            sum_token_mse += self.mse_loss(student_representations[:, i, :], teacher_representations[:, i, :])
 
         loss = sum_token_mse / student_representations.size(dim=1)
-
         return loss
 
     def __call__(self, student_outputs, teacher_outputs, labels):

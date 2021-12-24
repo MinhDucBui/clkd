@@ -1,4 +1,2 @@
 _target_: src.loss.RepresentationMSELoss
-size_average: None
-reduce: None
-reduction: "mean"
+reduction: "sum"
