@@ -42,7 +42,7 @@ def train(config: DictConfig) -> Optional[float]:
                 config = config_callback(config, cb_conf)
 
     # Init Module
-    distillation: LightningModule = BaseModule(cfg=config)
+    distillation: LightningModule = hydra.utils.instantiate(config.distillation_setup, cfg=config)
 
     # Init lightning loggers
     logger: List[LightningLoggerBase] = []
@@ -72,7 +72,7 @@ def train(config: DictConfig) -> Optional[float]:
     # Do first validation of model
     log.info("Do one validation epoch before training.")
     trainer.validate(model=distillation,
-                    datamodule=distillation.datamodule)
+                     datamodule=distillation.datamodule)
 
     # Train the model
     log.info("Starting training!")

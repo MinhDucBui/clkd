@@ -3,6 +3,9 @@
 # specify here default training configuration
 defaults:
 
+  # Setup of Distillation, e.g. teacher/student or teacher/student + adversarial setup
+  - distillation_setup: basemodule.yaml
+
   # Training Setup
   - trainer: default.yaml
 
