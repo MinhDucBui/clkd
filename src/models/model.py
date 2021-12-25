@@ -130,14 +130,17 @@ def get_tiny_model(pretrained_model_name_or_path, teacher, mapping, weights_from
 
 
 def get_model(pretrained_model_name_or_path, use_pretrained_weights, cfg=None, **kwargs):
-    if 'distilbert' in pretrained_model_name_or_path:
+
+    use_automodel = False
+    if 'distilbert-base-' in pretrained_model_name_or_path:
         config_class = DistilBertConfig
-    elif 'bert' in pretrained_model_name_or_path:
+    elif 'bert-base-' in pretrained_model_name_or_path:
         config_class = BertConfig
-    elif 'xlm' in pretrained_model_name_or_path:
+    elif 'xlm-roberta-base' in pretrained_model_name_or_path:
         config_class = XLMRobertaConfig
     else:
-        raise Exception('Add config_class corresponding to your model!')
+        use_automodel = True
+        # raise Exception('Add config_class corresponding to your model!')
 
     # Use from_pretrained to load the model with weights
     architecture_cfg = AutoConfig.from_pretrained(pretrained_model_name_or_path,
@@ -150,7 +153,8 @@ def get_model(pretrained_model_name_or_path, use_pretrained_weights, cfg=None, *
 
     # Load the model from standard configuration without loading the weights
     else:
-        architecture_cfg = config_class(**cfg)
+        if not use_automodel:
+            architecture_cfg = config_class(**cfg)
         model = AutoModelForMaskedLM.from_config(architecture_cfg)
 
     return model, architecture_cfg
