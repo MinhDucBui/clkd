@@ -23,10 +23,12 @@ class AdversarialLearning(BaseModule):
             *args,
             **kwargs,
     ):
+        
+        
         super().__init__(cfg, *args, **kwargs)
         self.language_out = nn.Linear(self.model[0].base_model.config.hidden_size, 1, bias=True)
         self.language_criterion = nn.BCEWithLogitsLoss(reduction='mean')
-
+        
     def configure_optimizers(self):
         optimizers, lr_schedulers = self.base_configure_optimizers()
         all_params = []
@@ -77,8 +79,6 @@ class AdversarialLearning(BaseModule):
             if language in model_cfg["languages"]:
                 model_idx = model_cfg["idx"]
                 break
-            else:
-                sys.exit("Language not available")
 
         full_batch = keep_only_model_forward_arguments(self.model[model_idx],
                                                        single_batch,
@@ -103,6 +103,7 @@ class AdversarialLearning(BaseModule):
         # map label to reverse order
         # TODO: Does only work for binary classification!!
         target = (target == 0).float()
+        
         loss = self.language_criterion(input=logits, target=target)
         return loss
 
@@ -157,4 +158,5 @@ class AdversarialLearning(BaseModule):
                              dim=-1)
         labels = torch.stack([language_labels[self.language_mapping["id_lang"][idx]] for idx in iter_number_languages],
                              dim=-1)
+        labels = labels.to(logits.device)
         return logits, labels
