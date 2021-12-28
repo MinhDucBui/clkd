@@ -1,0 +1,22 @@
+_recursive_: false
+_target_: src.distillation.adversarial_learning.AdversarialLearning
+
+validate_before_training: True
+
+generator:
+  lr_scheduler:
+    _target_: transformers.optimization.get_linear_schedule_with_warmup
+    num_warmup_steps: 0.1
+  optimizer:
+    _target_: transformers.optimization.AdamW
+    weight_decay: 0.01
+    lr: 0.0002
+
+discriminator:
+  lr_scheduler:
+    _target_: transformers.optimization.get_linear_schedule_with_warmup
+    num_warmup_steps: 0.1
+  optimizer:
+    _target_: transformers.optimization.AdamW
+    weight_decay: 0.01
+    lr: 0.0002

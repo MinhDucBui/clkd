@@ -118,11 +118,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                                               s_tokenizer=self.student_tokenizers,
                                               t_tokenizer=self.teacher_tokenizer)
 
-    # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
-    # In our case: One optimizer corresponds to a model
-    def training_step(self, batch, batch_idx, optimizer_idx=0):
-        """Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
-        In our case: One optimizer corresponds to a model.
+    def base_training_step(self, batch, batch_idx, optimizer_idx=0):
+        """Base Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
+           In our case: One optimizer corresponds to a model.
 
         Workflow:
         -> If first iteration, then get the teacher outputs for current batch and save them for next iterations
@@ -134,6 +132,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             batch:
             batch_idx:
             optimizer_idx:
+            save_student_outputs: Saving student outputs can be useful, e.g. for adversarial learning, where the output is
+                                  being used again.
 
         Returns:
 
@@ -188,6 +188,12 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         for key, value in output["log"].items():
             self.log(key, value)
 
+        return output
+
+    # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
+    # In our case: One optimizer corresponds to a model
+    def training_step(self, batch, batch_idx, optimizer_idx=0):
+        output = self.base_training_step(batch, batch_idx, optimizer_idx)
         return output
 
     def forward(self, batch: BatchEncoding):
