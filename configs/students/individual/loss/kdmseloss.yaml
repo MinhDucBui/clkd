@@ -1,0 +1,6 @@
+_target_: src.loss.KDLossMSELoss
+kd_weight: 0.5
+mse_weight: 0.5
+temperature: 4.0
+alpha: 0.5
+reduction: "sum"

@@ -125,3 +125,44 @@ class TinyBertLoss(LossHintonKD):
 
     def __call__(self, student_outputs, teacher_outputs, labels):
         return self.forward(student_outputs, teacher_outputs, labels)
+
+
+class RepresentationMSELoss(nn.Module):
+    def __init__(self, reduction='mean'):
+        super().__init__()
+        self.reduction = reduction
+        self.mse_loss = nn.MSELoss(reduction=self.reduction)
+
+    def forward(self, student_outputs, teacher_outputs, labels=None):
+        teacher_representations = teacher_outputs['hidden_states'][-1]
+        student_representations = student_outputs['hidden_states'][-1]
+        sum_token_mse = 0
+        for i in range(student_representations.size(dim=1)):
+            sum_token_mse += self.mse_loss(student_representations[:, i, :], teacher_representations[:, i, :])
+
+        loss = sum_token_mse / student_representations.size(dim=1)
+        return loss
+
+    def __call__(self, student_outputs, teacher_outputs, labels=None):
+        return self.forward(student_outputs, teacher_outputs, labels)
+
+
+class KDLossMSELoss(nn.Module):
+    def __init__(self, kd_weight, mse_weight, temperature, alpha, reduction='mean'):
+        super().__init__()
+        self.temperature = temperature
+        self.alpha = alpha
+        self.reduction = reduction
+        self.kd_weight = kd_weight
+        self.mse_weight = mse_weight
+        self.mse_loss = RepresentationMSELoss(self.reduction)
+        self.kd_loss = LossHintonKD(self.temperature, self.alpha)
+
+    def forward(self, student_outputs, teacher_outputs, labels=None):
+        total_loss = self.kd_weight * self.kd_loss(student_outputs, teacher_outputs, labels) \
+                     + self.mse_weight * self.mse_loss(student_outputs, teacher_outputs)
+
+        return total_loss
+
+    def __call__(self, student_outputs, teacher_outputs, labels):
+        return self.forward(student_outputs, teacher_outputs, labels)
