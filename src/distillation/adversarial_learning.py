@@ -48,7 +48,7 @@ class AdversarialLearning(BaseModule):
         all_params = list(seen.values())
         """
 
-        for model in ["generator", "discriminator"]:
+        for model in ["discriminator", "generator"]:
             if model == "discriminator":
                 optimizing_params = self.language_out.parameters()
             elif model == "generator":
