@@ -31,12 +31,12 @@ class AdversarialLearning(BaseModule):
         
     def configure_optimizers(self):
         optimizers, lr_schedulers = self.base_configure_optimizers()
-        all_params = []
+        transformer_params = []
         for i in range(self.number_of_models):
             embedding_parameters = []
             for key, value in self.embeddings[i].items():
                 embedding_parameters += list(value.parameters())
-            all_params += list(self.model[i].parameters()) + embedding_parameters
+            transformer_params += list(self.model[i].parameters()) + embedding_parameters
 
         # Get only unique objects
         """ 
@@ -49,7 +49,11 @@ class AdversarialLearning(BaseModule):
         """
 
         for model in ["generator", "discriminator"]:
-            optimizer = hydra.utils.instantiate(self.cfg["distillation_setup"][model]["optimizer"], all_params)
+            if model == "discriminator":
+                optimizing_params = self.language_out.parameters()
+            elif model == "generator":
+                optimizing_params = transformer_params
+            optimizer = hydra.utils.instantiate(self.cfg["distillation_setup"][model]["optimizer"], optimizing_params)
             optimizers.append(optimizer)
             if 'lr_scheduler' not in self.cfg["distillation_setup"][model]:
                 lr_schedulers.append(None)
@@ -123,23 +127,27 @@ class AdversarialLearning(BaseModule):
     def generator_step(self, batch, batch_idx):
         logits, labels = self.get_labels_logits(batch, batch_idx)
         g_loss = self.generator_loss(logits=logits, target=labels)
-        tqdm_dict = {"train" + "/" + 'discriminator_loss': g_loss}
+        tqdm_dict = {"train" + "/" + 'generator_loss' + "/train_loss": g_loss}
         output = {
             'loss': g_loss,
             'progress_bar': tqdm_dict,
             'log': tqdm_dict
         }
+        for key, value in output["log"].items():
+            self.log(key, value)
         return output
 
     def discriminator_step(self, batch, batch_idx):
         logits, labels = self.get_labels_logits(batch, batch_idx)
         d_loss = self.discriminator_loss(logits=logits, target=labels)
-        tqdm_dict = {"train" + "/" + 'discriminator_loss': d_loss}
+        tqdm_dict = {"train" + "/" + 'discriminator_loss' + "/train_loss": d_loss}
         output = {
             'loss': d_loss,
             'progress_bar': tqdm_dict,
             'log': tqdm_dict
         }
+        for key, value in output["log"].items():
+            self.log(key, value)
 
         return output
 
