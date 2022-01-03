@@ -84,13 +84,7 @@ class AdversarialLearning(BaseModule):
                 model_idx = model_cfg["idx"]
                 break
 
-        full_batch = keep_only_model_forward_arguments(self.model[model_idx],
-                                                       single_batch,
-                                                       remove_additional_keys=["labels"])
-
-        change_embedding_layer(self.model[model_idx], model_idx, self.embeddings, language)
-        student_outputs = self.model[model_idx](**full_batch)  # (bs, seq_length, voc_size)
-
+        student_outputs = self.forward(single_batch, model_idx, language)
         last_hidden_state = student_outputs['hidden_states'][-1]
         mean_pooled = mean(hidden_states=last_hidden_state, attention_mask=attention_mask)  # [B x E]
         logits = self.language_out(mean_pooled)  # [B x C]

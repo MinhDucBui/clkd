@@ -132,8 +132,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             batch:
             batch_idx:
             optimizer_idx:
-            save_student_outputs: Saving student outputs can be useful, e.g. for adversarial learning, where the output is
-                                  being used again.
 
         Returns:
 
@@ -160,16 +158,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
             # Get corresponding Teacher Outputs (in the current batch language)
             subset_teacher_output = self.teacher_outputs[language]
-
-            full_batch = keep_only_model_forward_arguments(self.model[model_idx],
-                                                           single_batch,
-                                                           remove_additional_keys=["labels"])
-
-            change_embedding_layer(self.model[model_idx], model_idx, self.embeddings, language)
-
-            # DEBUG:
-            # debug_embedding_updating(self.model, model_idx, batch_idx, self.test, self.test1, language)
-            student_outputs = self.model[model_idx](**full_batch)  # (bs, seq_length, voc_size)
+            student_outputs = self.forward(single_batch, model_idx, language)
 
             # Calculate Loss and Log
             if "labels" in single_batch.keys():
@@ -196,17 +185,16 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         output = self.base_training_step(batch, batch_idx, optimizer_idx)
         return output
 
-    def forward(self, batch: BatchEncoding):
-        output = {}
-        for model_idx in range(self.number_of_models):
-            model_languages = get_model_language(model_idx, self.language_mapping)
-            cleaned_batch, subset_batch, idx = get_subset_cleaned_batch(self.model[model_idx], model_languages, batch,
-                                                                        self.language_mapping,
-                                                                        remove_additional_keys=["labels"])
+    def forward(self, batch, model_idx, language):
+        full_batch = keep_only_model_forward_arguments(self.model[model_idx],
+                                                       batch,
+                                                       remove_additional_keys=["labels"])
 
-            subset_output = self.model[model_idx].forward(**cleaned_batch)
-            output[model_idx] = subset_output
-            output[model_idx]["batch_idx"] = idx
+        change_embedding_layer(self.model[model_idx], model_idx, self.embeddings, language)
+
+        # DEBUG:
+        # debug_embedding_updating(self.model, model_idx, batch_idx, self.test, self.test1, language)
+        output = self.model[model_idx](**full_batch)
 
         return output
 
