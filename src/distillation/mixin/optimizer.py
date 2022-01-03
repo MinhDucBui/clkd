@@ -20,12 +20,7 @@ class OptimizerMixin:
         for i in range(self.number_of_models):
             model_name = self.student_mapping["id_model"][i]["model_name"]
             optimizer_cfg = self.students_model_cfg[model_name].optimizer
-            embedding_parameters = []
-            for key, value in self.embeddings[i].items():
-                embedding_parameters += list(value.parameters())
-
-            optimizer = hydra.utils.instantiate(optimizer_cfg,
-                                                list(self.model[i].parameters()) + embedding_parameters)
+            optimizer = hydra.utils.instantiate(optimizer_cfg, self.get_transformer_params(model_idx=i))
             optimizers.append(optimizer)
 
             if 'lr_scheduler' not in self.students_model_cfg[model_name]:
@@ -55,3 +50,16 @@ class OptimizerMixin:
     def configure_optimizers(self):
         optimizers, lr_schedulers = self.base_configure_optimizers()
         return optimizers, lr_schedulers
+
+    def get_transformer_params(self, model_idx):
+        embedding_parameters = []
+        for key, value in self.embeddings[model_idx].items():
+            embedding_parameters += list(value.parameters())
+
+        return list(self.model[model_idx].parameters()) + embedding_parameters
+
+    def get_all_transformer_params(self):
+        transformer_params = []
+        for i in range(self.number_of_models):
+            transformer_params += self.get_transformer_params(i)
+        return transformer_params

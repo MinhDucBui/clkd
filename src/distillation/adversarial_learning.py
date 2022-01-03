@@ -1,5 +1,3 @@
-import sys
-
 from src.distillation.base_module import BaseModule
 from omegaconf import DictConfig
 from src.utils import utils
@@ -7,8 +5,6 @@ import hydra
 import torch.nn as nn
 import torch
 from src.models.modules.pooling import mean
-from src.models.model import change_embedding_layer
-from src.utils.utils import keep_only_model_forward_arguments
 log = utils.get_logger(__name__)
 
 
@@ -31,22 +27,7 @@ class AdversarialLearning(BaseModule):
         
     def configure_optimizers(self):
         optimizers, lr_schedulers = self.base_configure_optimizers()
-        transformer_params = []
-        for i in range(self.number_of_models):
-            embedding_parameters = []
-            for key, value in self.embeddings[i].items():
-                embedding_parameters += list(value.parameters())
-            transformer_params += list(self.model[i].parameters()) + embedding_parameters
-
-        # Get only unique objects
-        """ 
-        seen = collections.OrderedDict()
-        for obj in all_params:
-            if id(obj) in seen:
-                print(obj)
-            seen[id(obj)] = obj
-        all_params = list(seen.values())
-        """
+        transformer_params = self.get_all_transformer_params()
 
         for model in ["discriminator", "generator"]:
             if model == "discriminator":
