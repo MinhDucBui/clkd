@@ -1,0 +1,16 @@
+_recursive_: false
+_target_: src.distillation.hictl_mixup.HICTLMixup
+
+validate_before_training: True
+
+sictl:
+  lr_scheduler:
+    _target_: transformers.optimization.get_linear_schedule_with_warmup
+    num_warmup_steps: 0.1
+  _target_: transformers.optimization.AdamW
+    weight_decay: 0.01
+    lr: 0.002
+
+mixup:
+  alpha: 1.0
+  beta: 1.0
