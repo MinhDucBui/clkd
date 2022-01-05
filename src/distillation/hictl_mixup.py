@@ -38,13 +38,10 @@ class HICTLMixup(BaseModule):
                 optimizing_params = transformer_params
                 optimizer = hydra.utils.instantiate(self.cfg["distillation_setup"][model]["optimizer"], optimizing_params)
                 optimizers.append(optimizer)
-                if 'lr_scheduler' not in self.cfg["distillation_setup"][model]:
-                    lr_schedulers.append(None)
-                else:
+                if 'lr_scheduler' in self.cfg["distillation_setup"][model]:
                     lr_scheduler_cfg = self.cfg["distillation_setup"][model].lr_scheduler
                     lr_scheduler = self.configure_scheduler(lr_scheduler_cfg, optimizer)
                     lr_schedulers.append(lr_scheduler)
-
         return optimizers, lr_schedulers
 
     def training_step(self, batch, batch_idx, optimizer_idx=0):
@@ -69,25 +66,21 @@ class HICTLMixup(BaseModule):
         loss_sctl_trg_src = self.loss_sctl(cls_token[source], cls_token[target], negatives_trg_src)
         batch_size = negatives_src_trg.size()[0]
         loss = 1/(2*batch_size) * (torch.sum(loss_sctl_src_trg) + torch.sum(loss_sctl_trg_src))
-
+        
+        self.log("train/sctl_loss", loss)
         return {"loss": loss}
 
     def pred_cls_token(self, batch):
+        cls_token = {}
         for language, single_batch in batch.items():
             for model_name, model_cfg in self.student_mapping["model_id"].items():
                 # TODO: No overlapping languages permitted
                 if language in model_cfg["languages"]:
                     model_idx = model_cfg["idx"]
                     break
-
-            cls_token = {}
-            model_languages = get_model_language(model_idx, self.student_mapping)
-            for language, single_batch in batch.items():
-                if language not in model_languages:
-                    continue
-                student_outputs = self.forward(single_batch, model_idx, language)
-                last_hidden_state = student_outputs['hidden_states'][-1]
-                cls_token[language] = cls(hidden_states=last_hidden_state)
+            student_outputs = self.forward(single_batch, model_idx, language)
+            last_hidden_state = student_outputs['hidden_states'][-1]
+            cls_token[language] = cls(hidden_states=last_hidden_state)
 
         return cls_token
 

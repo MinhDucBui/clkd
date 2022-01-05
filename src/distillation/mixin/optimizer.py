@@ -22,10 +22,7 @@ class OptimizerMixin:
             optimizer_cfg = self.students_model_cfg[model_name].optimizer
             optimizer = hydra.utils.instantiate(optimizer_cfg, self.get_transformer_params(model_idx=i))
             optimizers.append(optimizer)
-
-            if 'lr_scheduler' not in self.students_model_cfg[model_name]:
-                lr_schedulers.append(None)
-            else:
+            if 'lr_scheduler' in self.students_model_cfg[model_name]:
                 lr_scheduler_cfg = self.students_model_cfg[model_name].lr_scheduler
                 lr_scheduler = self.configure_scheduler(lr_scheduler_cfg, optimizer)
                 lr_schedulers.append(lr_scheduler)

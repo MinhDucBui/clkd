@@ -36,9 +36,7 @@ class AdversarialLearning(BaseModule):
                 optimizing_params = transformer_params
             optimizer = hydra.utils.instantiate(self.cfg["distillation_setup"][model]["optimizer"], optimizing_params)
             optimizers.append(optimizer)
-            if 'lr_scheduler' not in self.cfg["distillation_setup"][model]:
-                lr_schedulers.append(None)
-            else:
+            if 'lr_scheduler' in self.cfg["distillation_setup"][model]:
                 lr_scheduler_cfg = self.cfg["distillation_setup"][model].lr_scheduler
                 lr_scheduler = self.configure_scheduler(lr_scheduler_cfg, optimizer)
                 lr_schedulers.append(lr_scheduler)
