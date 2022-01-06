@@ -147,14 +147,19 @@ class EvalMixin:
             return ret
         return {"outputs": outputs, "batch": batch}
 
-    def eval_step(self, batch: Union[dict, BatchEncoding], stage: str, model) -> dict:
+    def eval_step(self, batch: Union[dict, BatchEncoding], stage: str, model, language, model_idx) -> dict:
         """Performs model forward & user batch transformation in an eval step."""
         if self.evaluation.apply.batch is not None:
             batch = self.evaluation.apply.batch(batch)
 
         # Changed: From self(batch) -> self.model[model_idx](**batch) as we have multiple models
         # Use Batch without Labels
-        outputs = model.forward(**{key: value for key, value in batch.items() if key not in ["labels"]})
+        if model_idx == "teacher":
+            outputs = model.forward(**{key: value for key, value in batch.items() if key not in ["labels"]})
+        else:
+            outputs = self.forward(batch={key: value for key, value in batch.items() if key not in ["labels"]},
+                                   model_idx=model_idx,
+                                   language=language)
         if self.evaluation.apply.outputs is not None:
             outputs = self.evaluation.apply.outputs(outputs, batch)
 

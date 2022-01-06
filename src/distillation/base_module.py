@@ -1,5 +1,5 @@
 import copy
-
+import torch.nn as nn
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
@@ -73,7 +73,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         # Init Data Module
         log.info(f"Instantiating datamodule")
         self.initialize_datamodule()
-        print('break')
 
     def initialize_teacher(self):
         self.teacher_tokenizer, self._teacher = initialize_teacher_or_student(self.teacher_cfg)
@@ -85,7 +84,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             exec("self.%s = %s" % (model_name, "model"))
             embeddings = initialize_embeddings(model_cfg, self._teacher)
             for language, embedding in embeddings.items():
-                exec("self.%s = %s" % (model_name + "." + language, "embedding"))
+                exec("self.%s = %s" % (model_name + "_" + language, "embedding"))
+            # Delete old embedding layer to save some space
+            model.base_model.embeddings = None
             self.model.append(model)
             self.embeddings.append(embeddings)
             self.student_tokenizers.append(tokenizer)
@@ -250,6 +251,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                 else:
                     current_model = self.model[current_model_tuple[0]]
 
+                batch_language = self.language_mapping["id_lang"][batch["language"][0].item()]
+
                 cleaned_batch, _, _ = get_subset_cleaned_batch(current_model,
                                                                current_model_tuple[1],
                                                                batch,
@@ -265,7 +268,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                 self.metrics = self.evaluation.metrics
                 output_step = self.eval_step(cleaned_batch,
                                              stage=logger_name,
-                                             model=current_model)
+                                             model=current_model,
+                                             language=batch_language,
+                                             model_idx=current_model_tuple[0])
                 val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
         return val_outputs
 
