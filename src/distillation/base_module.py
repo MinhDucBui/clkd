@@ -1,18 +1,17 @@
 import copy
-import torch.nn as nn
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
 import torch
 from omegaconf import DictConfig
 from src.utils import utils
-from src.models.model import initialize_teacher_or_student, initialize_embeddings, change_embedding_layer
+from src.models.model import initialize_model
+from src.models.modules.utils import change_embedding_layer
 import hydra
-from src.utils.utils import keep_only_model_forward_arguments, get_model_language, name_model_for_logger, \
+from src.utils.utils import keep_only_model_forward_arguments, get_model_language, \
     append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
-from transformers.tokenization_utils_base import BatchEncoding
 from src.datamodules.mixed_data import MixedDataModule
 import itertools
 from src.utils.parameter_sharing import embedding_sharing, weight_sharing
@@ -75,18 +74,15 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         self.initialize_datamodule()
 
     def initialize_teacher(self):
-        self.teacher_tokenizer, self._teacher = initialize_teacher_or_student(self.teacher_cfg)
+        self.teacher_tokenizer, self._teacher, _ = initialize_model(self.teacher_cfg)
         self._teacher.eval()
 
     def initialize_student_components(self):
         for model_name, model_cfg in self.students_model_cfg.items():
-            tokenizer, model = initialize_teacher_or_student(model_cfg, self._teacher)
+            tokenizer, model, embeddings = initialize_model(model_cfg, self._teacher)
             exec("self.%s = %s" % (model_name, "model"))
-            embeddings = initialize_embeddings(model_cfg, self._teacher)
             for language, embedding in embeddings.items():
                 exec("self.%s = %s" % (model_name + "_" + language, "embedding"))
-            # Delete old embedding layer to save some space
-            model.base_model.embeddings = None
             self.model.append(model)
             self.embeddings.append(embeddings)
             self.student_tokenizers.append(tokenizer)
