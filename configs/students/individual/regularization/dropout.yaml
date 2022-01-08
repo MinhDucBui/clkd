@@ -1,0 +1,2 @@
+# Default setting of transformers are using dropout already. Nothing to do.
+# To change the dropout probability, go to the model configs and change the setting there.

@@ -34,6 +34,10 @@ def initialize_model(cfg, teacher=None):
         # None for teacher
         embeddings = None
 
+    # Add Regularization
+    if "regularization" in cfg.keys() and cfg["regularization"]:
+        model = hydra.utils.call(cfg["regularization"], model=model)
+
     return tokenizer, model, embeddings
 
 
