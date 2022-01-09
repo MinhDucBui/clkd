@@ -59,6 +59,7 @@ class HICTLMixup(BaseModule):
         source = self.language_mapping["id_lang"][0]
         target = self.language_mapping["id_lang"][1]
         negatives_src_trg = self.mixup(cls_token[source], cls_token[target])
+        negatives_src_trg = negatives_src_trg.detach()
         negatives_trg_src = self.mixup(cls_token[target], cls_token[source])
 
         # Loss
@@ -66,7 +67,7 @@ class HICTLMixup(BaseModule):
         loss_sctl_trg_src = self.loss_sctl(cls_token[source], cls_token[target], negatives_trg_src)
         batch_size = negatives_src_trg.size()[0]
         loss = 1/(2*batch_size) * (torch.sum(loss_sctl_src_trg) + torch.sum(loss_sctl_trg_src))
-        
+
         self.log("train/sctl_loss", loss)
         return {"loss": loss}
 
@@ -120,7 +121,6 @@ class HICTLMixup(BaseModule):
         return x_
 
     def loss_sctl(self, source, target, negatives):
-        nce = 0
 
         # Normalize for cos similarity
         source = f.normalize(source, p=2, dim=1)
