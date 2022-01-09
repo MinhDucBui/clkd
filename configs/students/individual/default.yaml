@@ -1,8 +1,9 @@
 defaults:
   - model: from_teacher
   - tokenizer: autotokenizer
-  - loss: kdloss
+  - loss: kdmseloss
   - optimizer: adamw
   - lr_scheduler: linear_warmup
+  - regularization: mixout
 
 #languages: ???
