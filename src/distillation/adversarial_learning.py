@@ -5,6 +5,7 @@ import hydra
 import torch.nn as nn
 import torch
 from src.models.modules.pooling import mean
+
 log = utils.get_logger(__name__)
 
 
@@ -19,17 +20,16 @@ class AdversarialLearning(BaseModule):
             *args,
             **kwargs,
     ):
-        
-        
+
         super().__init__(cfg, *args, **kwargs)
         self.language_out = nn.Linear(self.model[0].base_model.config.hidden_size, 1, bias=True)
         self.language_criterion = nn.BCEWithLogitsLoss(reduction='mean')
-        
+
     def configure_optimizers(self):
         optimizers, lr_schedulers = self.base_configure_optimizers()
         transformer_params = self.get_all_transformer_params()
 
-        for model in ["discriminator", "generator"]:
+        for model in ["generator", "discriminator"]:
             if model == "discriminator":
                 optimizing_params = self.language_out.parameters()
             elif model == "generator":
@@ -44,7 +44,7 @@ class AdversarialLearning(BaseModule):
         return optimizers, lr_schedulers
 
     def training_step(self, batch, batch_idx, optimizer_idx=0):
-        generator_idx, discriminator_idx = self.number_of_models, self.number_of_models+1
+        generator_idx, discriminator_idx = self.number_of_models, self.number_of_models + 1
 
         if optimizer_idx == generator_idx:
             output = self.generator_step(batch, batch_idx)
@@ -80,7 +80,7 @@ class AdversarialLearning(BaseModule):
         # map label to reverse order
         # TODO: Does only work for binary classification!!
         target = (target == 0).float()
-        
+
         loss = self.language_criterion(input=logits, target=target)
         return loss
 
