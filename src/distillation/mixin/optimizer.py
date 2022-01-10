@@ -33,10 +33,12 @@ class OptimizerMixin:
                 lr_scheduler_cfg.num_warmup_steps, float
         ):
             lr_scheduler_cfg.num_warmup_steps *= self.num_training_steps
-        log.info(
-            f"Warm up for {lr_scheduler_cfg.num_warmup_steps} of {self.num_training_steps}"
-        )
-        scheduler = hydra.utils.instantiate(lr_scheduler_cfg, optimizer, num_training_steps=self.num_training_steps)
+            log.info(
+                f"Warm up for {lr_scheduler_cfg.num_warmup_steps} of {self.num_training_steps}"
+            )
+            scheduler = hydra.utils.instantiate(lr_scheduler_cfg, optimizer, num_training_steps=self.num_training_steps)
+        else:
+            scheduler = hydra.utils.instantiate(lr_scheduler_cfg, optimizer)
 
         return {"scheduler": scheduler, "interval": "step", "frequency": 1}
 
