@@ -162,7 +162,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                 labels = single_batch["labels"]
             else:
                 labels = None
-            abs_loss += self.loss[model_idx](student_outputs, subset_teacher_output, labels)
+            abs_loss += self.loss[model_idx](subset_teacher_output, student_outputs, labels)
 
         model_name = self.student_mapping["id_model"][model_idx]["model_name"]
         tqdm_dict = {"train" + "/" + model_name + '/train_loss': abs_loss}
