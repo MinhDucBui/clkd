@@ -52,9 +52,10 @@ class OptimizerMixin:
 
     def get_transformer_params(self, model_idx):
         embedding_parameters = []
+        id_list = []
         for key, value in self.embeddings[model_idx].items():
+            id_list.append(id(value))
             embedding_parameters += list(value.parameters())
-
         return list(self.model[model_idx].parameters()) + embedding_parameters
 
     def get_all_transformer_params(self):
