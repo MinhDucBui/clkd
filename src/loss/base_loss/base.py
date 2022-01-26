@@ -193,10 +193,10 @@ class LossHiddenCos(nn.Module):
     def forward(self, teacher_outputs, student_outputs):
         hidden_loss = 0
         for key, value in self.mapping.items():
-            teacher_hidden_state = teacher_outputs['hidden_states'][value]
-            student_hidden_state = student_outputs['hidden_states'][key]
+            dim = student_outputs['hidden_states'][key].size(-1)
+            teacher_hidden_state = teacher_outputs['hidden_states'][value].view(-1, dim)
+            student_hidden_state = student_outputs['hidden_states'][key].view(-1, dim)
             target = student_hidden_state.new(student_hidden_state.size(0)).fill_(1)
-
             # Embedding loss
             hidden_loss += self.cosine_loss_fct(teacher_hidden_state, student_hidden_state, target)
 

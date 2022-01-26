@@ -1,7 +1,7 @@
 _target_: src.loss.loss.GeneralLoss
 defaults:
   - base_loss@base_loss.mlm: mlm.yaml
-  - base_loss@base_loss.softtargets_ce: softtargets_kl.yaml
+  - base_loss@base_loss.softtargets_kl: softtargets_kl.yaml
 
 base_loss:
   softtargets_kl:

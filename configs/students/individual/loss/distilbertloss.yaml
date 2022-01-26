@@ -5,7 +5,7 @@ defaults:
   - base_loss@base_loss.hidden_cos: hidden_cos.yaml
 
 base_loss:
-  logits_kl:
+  softtargets_kl:
     temperature: 4.0
   hidden_cos:
     mapping: {4: 12}

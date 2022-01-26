@@ -39,4 +39,4 @@ class GeneralLoss(nn.Module):
 
         """
 
-        return self.forward(student_outputs, teacher_outputs, labels)
+        return self.forward(teacher_outputs, student_outputs, labels)
