@@ -1,4 +1,4 @@
-_target_: src.models.architecture.tiny_model.get_tiny_model
+_target_: src.models.model.get_tiny_model
 
 defaults:
   - automodel.yaml

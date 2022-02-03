@@ -3,10 +3,15 @@ from omegaconf import OmegaConf, open_dict
 from transformers import (
     AutoModelForMaskedLM,
     XLMRobertaConfig,
+    XLMRobertaForMaskedLM,
     BertConfig,
+    BertForMaskedLM,
     DistilBertConfig,
-    AutoConfig,
+    DistilBertForMaskedLM,
+    AutoConfig
 )
+from src.models.architecture.tiny_model import TinyModel
+
 
 
 def initialize_model(cfg, teacher=None):
@@ -15,6 +20,7 @@ def initialize_model(cfg, teacher=None):
     Returns:
 
     """
+    
     tokenizer = hydra.utils.instantiate(cfg.tokenizer)
     OmegaConf.set_struct(cfg, True)
     with open_dict(cfg):
@@ -80,3 +86,19 @@ def initialize_embeddings(cfg, teacher=None):
         else:
             embeddings[language] = model.base_model.embeddings
     return embeddings
+
+
+def get_tiny_model(pretrained_model_name_or_path, teacher, mapping, weights_from_teacher=None,
+                   cfg=None, **kwargs):
+    if 'distilbert' in pretrained_model_name_or_path:
+        model_class, config_class = DistilBertForMaskedLM, DistilBertConfig
+    elif 'xlm' in pretrained_model_name_or_path:
+        model_class, config_class = XLMRobertaForMaskedLM, XLMRobertaConfig
+    elif 'bert' in pretrained_model_name_or_path:
+        model_class, config_class = BertForMaskedLM, BertConfig
+    else:
+        model_class, config_class = AutoModelForMaskedLM, AutoConfig
+
+    architecture_cfg = config_class(**cfg)
+
+    return TinyModel(architecture_cfg, teacher, weights_from_teacher, mapping), architecture_cfg
