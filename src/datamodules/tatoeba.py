@@ -57,7 +57,9 @@ class TatoebaDataModule(BaseDataModule):
                 language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
                 dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
             src = preprocess_tatoeba(dataset, self.tokenizer, language_pair[0], self.language_mapping)
-            trg = preprocess_tatoeba(dataset, self.tokenizer, language_pair[1], self.language_mapping)
+            trg = preprocess_tatoeba(dataset, self.tokenizer, language_pair[1],
+                                     self.language_mapping,
+                                     start_index=len(src))
 
             if stage in (None, "val"):
                 for task_name in self.eval_cfg.keys():
@@ -71,7 +73,7 @@ class TatoebaDataModule(BaseDataModule):
                     self.data_val.append(concatenate_datasets([src, trg]))
 
 
-def preprocess_tatoeba(dataset, tokenizer, language, language_mapping):
+def preprocess_tatoeba(dataset, tokenizer, language, language_mapping, start_index=0):
     def split_text(x, language: str):
         return {"text": x["translation"][language]}
 
@@ -79,6 +81,7 @@ def preprocess_tatoeba(dataset, tokenizer, language, language_mapping):
     new_dataset = new_dataset.remove_columns(["translation"]).remove_columns(["id"])
     new_dataset = new_dataset.filter(lambda example: example['text'] is not None)
     new_dataset = new_dataset.add_column("language", [language] * len(new_dataset))
+    new_dataset = new_dataset.add_column("labels", [x for x in range(start_index, len(new_dataset)+start_index)])
     new_dataset = new_dataset.map(
         lambda x: add_language_tag_tokenizer(x, tokenizer, language_mapping)).remove_columns(["text"])
     return new_dataset
