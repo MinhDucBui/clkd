@@ -22,7 +22,7 @@ class TinyModel(nn.Module):
 
         if self.student_hidden_size != self.fit_size:
             self.projections = nn.ModuleList(
-                [nn.Linear(cfg.hidden_size, self.fit_size) for _ in range(config.num_hidden_layers + 1)])
+                [nn.Linear(config.hidden_size, self.fit_size) for _ in range(config.num_hidden_layers + 1)])
 
         self.base_model = self.base.base_model
 
