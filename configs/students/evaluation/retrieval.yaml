@@ -14,15 +14,17 @@ apply:
   # a function that takes (outputs, batch)
   outputs:
     _target_: src.utils.hydra.partial
-    _partial_: src.utils.hydra.get_cls
-  # a function that takes (outputs, batch)
+    _partial_: src.utils.hydra.get_cls_labels
+  # a function that takes (outputs)
   step_outputs:
       _target_: src.utils.hydra.partial
       _partial_: src.utils.hydra.prepare_retrieval_eval
 
 # str or list of non-conflicting keys
 step_outputs:
-  outputs: cls
+  outputs:
+    - cls
+    - labels
 
 
 # either metrics or val_metrics and test_metrics
@@ -33,7 +35,9 @@ metrics:
     # instructions to instantiate metric, preferrably torchmetrics.Metric
     metric:
       _target_: src.evaluation.retrieval.MRR
+      # hidden_size: ${students.individual.model.cfg.hidden_size}
     # either on_step: true or on_epoch: true
     on_epoch: true
     compute: 
-      preds: "outputs:preds"
+      cls: "outputs:cls"
+      labels: "outputs:labels"
