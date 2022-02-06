@@ -257,7 +257,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
                 if cleaned_batch["input_ids"].nelement() == 0:
                     continue
-
+                
                 # TODO: Hardcoded, retrieval only needs to be computed once...
                 # TODO: Best case is that every task only needs to be coded once... Change to this behaviour
                 self.evaluation = model_cfg["cfg"]
@@ -267,7 +267,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                                              model=current_model,
                                              language=batch_language,
                                              model_idx=current_model_tuple[0])
-                val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
+                if output_step:
+                    val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
         return val_outputs
 
     def validation_epoch_end(self, validation_step_outputs: list):
