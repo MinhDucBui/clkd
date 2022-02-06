@@ -61,7 +61,7 @@ class TinyModel(nn.Module):
     def forward(self, input_ids, token_type_ids=None,
                 attention_mask=None, labels=None):
 
-        outputs = self.base(input_ids, token_type_ids, attention_mask)
+        outputs = self.base(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,)
 
         if self.student_hidden_size != self.fit_size:
             outputs['hidden_states'] = [self.projections[i](outputs["hidden_states"][i]) for i in
