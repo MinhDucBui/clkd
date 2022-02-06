@@ -37,7 +37,7 @@ metrics:
       _target_: src.evaluation.retrieval.MRR
       # hidden_size: ${students.individual.model.cfg.hidden_size}
     # either on_step: true or on_epoch: true
-    on_epoch: true
+    on_step: true
     compute: 
       cls: "outputs:cls"
       labels: "outputs:labels"

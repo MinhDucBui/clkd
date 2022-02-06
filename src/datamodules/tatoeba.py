@@ -76,7 +76,7 @@ class TatoebaDataModule(BaseDataModule):
 def preprocess_tatoeba(dataset, tokenizer, language, language_mapping, start_index=0):
     def split_text(x, language: str):
         return {"text": x["translation"][language]}
-
+    
     new_dataset = dataset.map(lambda x: split_text(x, language))
     new_dataset = new_dataset.remove_columns(["translation"]).remove_columns(["id"])
     new_dataset = new_dataset.filter(lambda example: example['text'] is not None)

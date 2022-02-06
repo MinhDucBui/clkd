@@ -8,15 +8,15 @@ class MRR(Metric):
         # dist_reduce_fx indicates the function that should be used to reduce
         # state from multiple processes
         super().__init__(dist_sync_on_step=dist_sync_on_step)
-        self.add_state("cls", default=list(), dist_reduce_fx="cat")
-        self.add_state("labels", default=list(), dist_reduce_fx="cat")
+        self.add_state("cls", default=[], dist_reduce_fx="cat")
+        self.add_state("labels", default=[], dist_reduce_fx="cat")
 
     def update(self, cls: torch.Tensor, labels: torch.Tensor):
         self.cls.append(cls)
         self.labels.append(labels)
 
     def compute(self):
-        self.cls = torch.cat([x for _, x in sorted(zip(self.labels, self.cls), key=lambda pair: pair[0])], 0)
+        self.cls = torch.cat([torch.unsqueeze(x, 0) for _, x in sorted(zip(self.labels, self.cls), key=lambda pair: pair[0])], 0)
         num = self.cls.shape[0]
         self.cls /= self.cls.norm(2, dim=-1, keepdim=True)
         src_embeds = self.cls[: num // 2]

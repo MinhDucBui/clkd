@@ -166,8 +166,10 @@ class EvalMixin:
         for k, v in self.metrics.items():
             if getattr(v, "on_step", False):
                 kwargs = self.prepare_metric_input(outputs, batch, v.compute)
-                v["metric"](**kwargs)
-        return self.collect_step_output(outputs, batch)
+                v["metric"].update(**kwargs)
+                return None
+            elif getattr(v, "on_epoch", False):
+                return self.collect_step_output(outputs, batch)
 
     def eval_epoch_end(self, stage: str, step_outputs: list) -> dict:
         """Computes evaluation metric at epoch end for respective `stage`.
@@ -194,7 +196,7 @@ class EvalMixin:
                 self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
             if getattr(v, "on_epoch", False):
                 kwargs: dict = self.prepare_metric_input(outputs, None, v.compute)
-                self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True)
+                self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True, on_epoch=True)
             v["metric"].reset()
         return outputs
 
