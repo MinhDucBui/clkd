@@ -1,7 +1,7 @@
 _target_: src.models.model.get_model
 
 teacher: None
-pretrained_model_name_or_path: "distilbert-base-multilingual-cased"
+pretrained_model_name_or_path: "prajjwal1/bert-tiny"
 use_pretrained_weights: true
 
 cfg:

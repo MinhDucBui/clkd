@@ -4,5 +4,6 @@ defaults:
   - loss: kdloss
   - optimizer: adamw
   - lr_scheduler: linear_warmup
+  - regularization: dropout
 
 #languages: ???

@@ -1,0 +1,4 @@
+_recursive_: false
+_target_: src.distillation.base_module.BaseModule
+
+validate_before_training: True

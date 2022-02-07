@@ -147,22 +147,29 @@ class EvalMixin:
             return ret
         return {"outputs": outputs, "batch": batch}
 
-    def eval_step(self, batch: Union[dict, BatchEncoding], stage: str, model) -> dict:
+    def eval_step(self, batch: Union[dict, BatchEncoding], stage: str, model, language, model_idx) -> dict:
         """Performs model forward & user batch transformation in an eval step."""
         if self.evaluation.apply.batch is not None:
             batch = self.evaluation.apply.batch(batch)
 
         # Changed: From self(batch) -> self.model[model_idx](**batch) as we have multiple models
         # Use Batch without Labels
-        outputs = model.forward(**{key: value for key, value in batch.items() if key not in ["labels"]})
+        if model_idx == "teacher":
+            outputs = model.forward(**{key: value for key, value in batch.items() if key not in ["labels"]})
+        else:
+            outputs = self.forward(batch={key: value for key, value in batch.items() if key not in ["labels"]},
+                                   model_idx=model_idx,
+                                   language=language)
         if self.evaluation.apply.outputs is not None:
             outputs = self.evaluation.apply.outputs(outputs, batch)
 
         for k, v in self.metrics.items():
             if getattr(v, "on_step", False):
                 kwargs = self.prepare_metric_input(outputs, batch, v.compute)
-                v["metric"](**kwargs)
-        return self.collect_step_output(outputs, batch)
+                v["metric"].update(**kwargs)
+                return None
+            elif getattr(v, "on_epoch", False):
+                return self.collect_step_output(outputs, batch)
 
     def eval_epoch_end(self, stage: str, step_outputs: list) -> dict:
         """Computes evaluation metric at epoch end for respective `stage`.
@@ -189,7 +196,7 @@ class EvalMixin:
                 self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
             if getattr(v, "on_epoch", False):
                 kwargs: dict = self.prepare_metric_input(outputs, None, v.compute)
-                self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True)
+                self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True, on_epoch=True)
             v["metric"].reset()
         return outputs
 

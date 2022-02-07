@@ -4,7 +4,6 @@ import copy
 
 
 def assert_functions(cfg):
-
     # Extract configs
     students_cfg = {}
     for model_name, model_cfg in cfg.students.individual.items():
@@ -87,3 +86,13 @@ def assert_weight_sharing_cfg(students_cfg, weight_sharing_cfg):
             for model in single_tuple:
                 assert model[0] in students_cfg.keys(), \
                     "Model {} in weight_sharing is not defined in students_cfg".format(model[0])
+
+
+def assert_loss(base_loss, loss_weighting):
+    for loss_name, loss in base_loss.items():
+        assert loss_name in loss_weighting.keys(), \
+            "Loss {} defined but no loss_weighting found in loss cfg".format(loss_name)
+
+    for loss_name, _ in loss_weighting.items():
+        assert loss_name in loss_weighting.keys(), \
+            "loss_weighting {} defined but not defined in base_loss in loss cfg".format(loss_name)

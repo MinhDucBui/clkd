@@ -9,10 +9,10 @@ import re
 
 
 def expand(
-    cfg: DictConfig,
-    cfg_key: str,
-    keys: Union[str, list[str]] = ["train", "val", "test"],
-    gen_keys: bool = False,
+        cfg: DictConfig,
+        cfg_key: str,
+        keys: Union[str, list[str]] = ["train", "val", "test"],
+        gen_keys: bool = False,
 ) -> DictConfig:
     """Expands partial configuration of `keys` in `cfg` with the residual configuration.
 
@@ -108,18 +108,16 @@ def get_cls(outputs, batch):
     return outputs
 
 
+def get_cls_labels(outputs, batch):
+    outputs["cls"] = cls(outputs.hidden_states[-1], batch["attention_mask"])
+    outputs["labels"] = batch["labels"]
+    return outputs
+
+
 # list of dictionaries flattend to one dictionary
 def prepare_retrieval_eval(outputs):
-    num = outputs["cls"].shape[0]
-    outputs["cls"] /= outputs["cls"].norm(2, dim=-1, keepdim=True)
-    src_embeds = outputs["cls"][: num // 2]
-    trg_embeds = outputs["cls"][num // 2:]
-    # (1000, 1000)
-    preds = src_embeds @ trg_embeds.T
-    # targets = (
-    #     torch.zeros((num // 2, num // 2)).fill_diagonal_(1).long().to(src_embeds.device)
-    # )
+
     return {
-        "preds": preds,
-        # "targets": targets,
+        "cls": outputs["cls"],
+        "labels": outputs["labels"],
     }

@@ -313,6 +313,7 @@ def extras(config: DictConfig) -> None:
 def print_config(
         config: DictConfig,
         fields: Sequence[str] = (
+                "distillation_setup",
                 "trainer",
                 "teacher",
                 "students",
@@ -377,6 +378,7 @@ def log_hyperparameters(
     hparams["teacher"] = config["teacher"]
     hparams["datamodule"] = config["datamodule"]
     hparams["students"] = config["students"]
+    hparams["distillation_setup"] = config["distillation_setup"]
     if "seed" in config:
         hparams["seed"] = config["seed"]
     if "callbacks" in config:

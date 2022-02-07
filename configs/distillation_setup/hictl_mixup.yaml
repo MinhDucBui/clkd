@@ -1,0 +1,13 @@
+_recursive_: false
+_target_: src.distillation.hictl_mixup.HICTLMixup
+
+validate_before_training: True
+
+sictl:
+  optimizer:
+    _target_: transformers.optimization.Adafactor
+    weight_decay: 0.01
+
+mixup:
+  alpha: 1.0
+  beta: 1.0

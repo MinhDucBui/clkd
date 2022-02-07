@@ -1,0 +1,13 @@
+_target_: src.loss.loss.GeneralLoss
+defaults:
+  - base_loss@base_loss.mlm: mlm.yaml
+  - base_loss@base_loss.softtargets_kl: softtargets_kl.yaml
+
+base_loss:
+  softtargets_kl:
+    temperature: 4.0
+
+loss_weighting:
+  mlm: 0.5
+  softtargets_kl: 0.5
+

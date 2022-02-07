@@ -1,0 +1,19 @@
+_recursive_: false
+_target_: src.distillation.adversarial_learning.AdversarialLearningGradientFlipping
+
+validate_before_training: True
+
+generator:
+  train_models: ["student_turkish"] # If you want to train all models, give "all" as a string or list all models
+    
+discriminator:
+
+  architecture:
+    n_hidden_layers: 2
+    dropout_p: 0.2
+    lambd: 1.0
+    bias: True
+    batch_norm: True
+  optimizer:
+    _target_: transformers.optimization.Adafactor
+    weight_decay: 0.01

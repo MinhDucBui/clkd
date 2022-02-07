@@ -1,0 +1,2 @@
+_target_: src.loss.base_loss.base.LossSoftTargetsCE
+temperature: 4.0

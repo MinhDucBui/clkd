@@ -1,18 +1,17 @@
 import copy
-
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
 import torch
 from omegaconf import DictConfig
 from src.utils import utils
-from src.models.model import initialize_teacher_or_student, initialize_embeddings, change_embedding_layer
+from src.models.model import initialize_model
+from src.models.modules.utils import change_embedding_layer
 import hydra
-from src.utils.utils import keep_only_model_forward_arguments, get_model_language, name_model_for_logger, \
+from src.utils.utils import keep_only_model_forward_arguments, get_model_language, \
     append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
-from transformers.tokenization_utils_base import BatchEncoding
 from src.datamodules.mixed_data import MixedDataModule
 import itertools
 from src.utils.parameter_sharing import embedding_sharing, weight_sharing
@@ -73,19 +72,17 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         # Init Data Module
         log.info(f"Instantiating datamodule")
         self.initialize_datamodule()
-        print('break')
 
     def initialize_teacher(self):
-        self.teacher_tokenizer, self._teacher = initialize_teacher_or_student(self.teacher_cfg)
+        self.teacher_tokenizer, self._teacher, _ = initialize_model(self.teacher_cfg)
         self._teacher.eval()
 
     def initialize_student_components(self):
         for model_name, model_cfg in self.students_model_cfg.items():
-            tokenizer, model = initialize_teacher_or_student(model_cfg, self._teacher)
+            tokenizer, model, embeddings = initialize_model(model_cfg, self._teacher)
             exec("self.%s = %s" % (model_name, "model"))
-            embeddings = initialize_embeddings(model_cfg, self._teacher)
             for language, embedding in embeddings.items():
-                exec("self.%s = %s" % (model_name + "." + language, "embedding"))
+                exec("self.%s = %s" % (model_name + "_" + language, "embedding"))
             self.model.append(model)
             self.embeddings.append(embeddings)
             self.student_tokenizers.append(tokenizer)
@@ -118,11 +115,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                                               s_tokenizer=self.student_tokenizers,
                                               t_tokenizer=self.teacher_tokenizer)
 
-    # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
-    # In our case: One optimizer corresponds to a model
-    def training_step(self, batch, batch_idx, optimizer_idx=0):
-        """Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
-        In our case: One optimizer corresponds to a model.
+    def base_training_step(self, batch, batch_idx, optimizer_idx=0):
+        """Base Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
+           In our case: One optimizer corresponds to a model.
 
         Workflow:
         -> If first iteration, then get the teacher outputs for current batch and save them for next iterations
@@ -160,23 +155,14 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
             # Get corresponding Teacher Outputs (in the current batch language)
             subset_teacher_output = self.teacher_outputs[language]
-
-            full_batch = keep_only_model_forward_arguments(self.model[model_idx],
-                                                           single_batch,
-                                                           remove_additional_keys=["labels"])
-
-            change_embedding_layer(self.model[model_idx], model_idx, self.embeddings, language)
-
-            # DEBUG:
-            # debug_embedding_updating(self.model, model_idx, batch_idx, self.test, self.test1, language)
-            student_outputs = self.model[model_idx](**full_batch)  # (bs, seq_length, voc_size)
+            student_outputs = self.forward(single_batch, model_idx, language)
 
             # Calculate Loss and Log
             if "labels" in single_batch.keys():
                 labels = single_batch["labels"]
             else:
                 labels = None
-            abs_loss += self.loss[model_idx](student_outputs, subset_teacher_output, labels)
+            abs_loss += self.loss[model_idx](subset_teacher_output, student_outputs, labels)
 
         model_name = self.student_mapping["id_model"][model_idx]["model_name"]
         tqdm_dict = {"train" + "/" + model_name + '/train_loss': abs_loss}
@@ -190,17 +176,22 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         return output
 
-    def forward(self, batch: BatchEncoding):
-        output = {}
-        for model_idx in range(self.number_of_models):
-            model_languages = get_model_language(model_idx, self.language_mapping)
-            cleaned_batch, subset_batch, idx = get_subset_cleaned_batch(self.model[model_idx], model_languages, batch,
-                                                                        self.language_mapping,
-                                                                        remove_additional_keys=["labels"])
+    # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
+    # In our case: One optimizer corresponds to a model
+    def training_step(self, batch, batch_idx, optimizer_idx=0):
+        output = self.base_training_step(batch, batch_idx, optimizer_idx)
+        return output
 
-            subset_output = self.model[model_idx].forward(**cleaned_batch)
-            output[model_idx] = subset_output
-            output[model_idx]["batch_idx"] = idx
+    def forward(self, batch, model_idx, language):
+        full_batch = keep_only_model_forward_arguments(self.model[model_idx],
+                                                       batch,
+                                                       remove_additional_keys=["labels"])
+
+        change_embedding_layer(self.model[model_idx], model_idx, self.embeddings, language)
+
+        # DEBUG:
+        # debug_embedding_updating(self.model, model_idx, batch_idx, self.test, self.test1, language)
+        output = self.model[model_idx](**full_batch)
 
         return output
 
@@ -256,6 +247,8 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                 else:
                     current_model = self.model[current_model_tuple[0]]
 
+                batch_language = self.language_mapping["id_lang"][batch["language"][0].item()]
+
                 cleaned_batch, _, _ = get_subset_cleaned_batch(current_model,
                                                                current_model_tuple[1],
                                                                batch,
@@ -264,15 +257,18 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
                 if cleaned_batch["input_ids"].nelement() == 0:
                     continue
-
+                
                 # TODO: Hardcoded, retrieval only needs to be computed once...
                 # TODO: Best case is that every task only needs to be coded once... Change to this behaviour
                 self.evaluation = model_cfg["cfg"]
                 self.metrics = self.evaluation.metrics
                 output_step = self.eval_step(cleaned_batch,
                                              stage=logger_name,
-                                             model=current_model)
-                val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
+                                             model=current_model,
+                                             language=batch_language,
+                                             model_idx=current_model_tuple[0])
+                if output_step:
+                    val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
         return val_outputs
 
     def validation_epoch_end(self, validation_step_outputs: list):

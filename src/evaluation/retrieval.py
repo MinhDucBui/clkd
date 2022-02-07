@@ -8,17 +8,24 @@ class MRR(Metric):
         # dist_reduce_fx indicates the function that should be used to reduce
         # state from multiple processes
         super().__init__(dist_sync_on_step=dist_sync_on_step)
-        self.add_state("reciprocal_rank", default=torch.tensor(0, dtype=torch.float64), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("cls", default=[], dist_reduce_fx="cat")
+        self.add_state("labels", default=[], dist_reduce_fx="cat")
 
-    def update(self, preds: torch.Tensor):
-        reciprocal_rank = get_reciprocal_rank(preds)
-        self.reciprocal_rank += reciprocal_rank.sum()
-        self.total += preds.shape[0]
+    def update(self, cls: torch.Tensor, labels: torch.Tensor):
+        self.cls.append(cls)
+        self.labels.append(labels)
 
     def compute(self):
+        self.cls = torch.cat([torch.unsqueeze(x, 0) for _, x in sorted(zip(self.labels, self.cls), key=lambda pair: pair[0])], 0)
+        num = self.cls.shape[0]
+        self.cls /= self.cls.norm(2, dim=-1, keepdim=True)
+        src_embeds = self.cls[: num // 2]
+        trg_embeds = self.cls[num // 2:]
+        # (1000, 1000)
+        preds = src_embeds @ trg_embeds.T
+        reciprocal_rank = get_reciprocal_rank(preds)
         # compute final result
-        return self.reciprocal_rank / self.total
+        return reciprocal_rank
 
 
 def get_reciprocal_rank(preds: torch.Tensor) -> torch.Tensor:
