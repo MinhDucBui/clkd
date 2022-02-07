@@ -196,8 +196,7 @@ class EvalMixin:
                 self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
             if getattr(v, "on_epoch", False):
                 kwargs: dict = self.prepare_metric_input(outputs, None, v.compute)
-                self.log(f"val/retrieval/student_turkish_tr-student_english_en/{k}", 
-                         v["metric"](**kwargs), prog_bar=True, on_epoch=True)
+                self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True, on_epoch=True)
             v["metric"].reset()
         return outputs
 
