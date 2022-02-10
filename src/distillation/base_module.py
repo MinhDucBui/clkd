@@ -216,7 +216,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         Returns:
 
         """
-
+        
         val_outputs = {}
 
         # Get language and task for current validation set with index dataloader_idx
@@ -285,6 +285,19 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         Returns:
 
+        """
+        
+        """
+        for name, param in self.model[0].named_parameters():
+            if param.requires_grad:
+                if "base.bert.encoder.layer.3.intermediate.dense.weight" == name:
+                    print(name, param.data)
+                if "base.cls.predictions.transform.LayerNorm.bias" == name:
+                    print(name, param.data)
+        for l, emb in self.embeddings[0].items():
+            for name, param in emb.named_parameters():
+                if param.requires_grad:
+                    print(name, param.data)
         """
 
         for model_eval_cfg in self.validation_mapping:
