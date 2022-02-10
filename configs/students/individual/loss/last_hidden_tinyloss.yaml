@@ -14,7 +14,7 @@ base_loss:
     mapping: {4: 12}
 
 loss_weighting:
-  softtargets_kl: 0.01
-  hidden_mse: 0.33
-  att_mse: 0.33
-  embedding_mse: 0.33
+  softtargets_kl: 0.0001
+  hidden_mse: 0.3333
+  att_mse: 0.3333
+  embedding_mse: 0.3333

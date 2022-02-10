@@ -1,1 +1,1 @@
-_target_: src.loss.base_loss.base.LossEmbeddingMSE
+_target_: src.loss.base_loss.embedding_loss.LossEmbeddingMSE
