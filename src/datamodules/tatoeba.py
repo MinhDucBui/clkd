@@ -55,7 +55,7 @@ class TatoebaDataModule(BaseDataModule):
                 dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
             except FileNotFoundError:
                 language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
-                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
+
             src = preprocess_tatoeba(dataset, self.tokenizer, language_pair[0], self.language_mapping)
             trg = preprocess_tatoeba(dataset, self.tokenizer, language_pair[1],
                                      self.language_mapping,

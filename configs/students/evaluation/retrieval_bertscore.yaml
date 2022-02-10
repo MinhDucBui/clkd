@@ -4,7 +4,7 @@ defaults:
 evaluate_with: ??? # E.g. ((0, "en"), (0, "ht"))
 
 logger:
-  name: "retrieval" # Please set name the same as the cfg name
+  name: "retrieval_bertscore" # Please set name the same as the cfg name
   # Todo: Later, just pass the student models in here
 
 # apply
@@ -14,16 +14,16 @@ apply:
   # a function that takes (outputs, batch)
   outputs:
     _target_: src.utils.hydra.partial
-    _partial_: src.utils.hydra.get_cls_labels
+    _partial_: src.utils.hydra.get_last_hidden_representation_labels
   # a function that takes (outputs)
   step_outputs:
       _target_: src.utils.hydra.partial
-      _partial_: src.utils.hydra.prepare_retrieval_eval
+      _partial_: src.utils.hydra.prepare_retrieval_bertscore_eval
 
 # str or list of non-conflicting keys
 step_outputs:
   outputs:
-    - cls
+    - last_hidden_representation
     - labels
 
 
@@ -31,13 +31,13 @@ step_outputs:
 # where the latter
 metrics:
   # name of the metric used eg for logging
-  mrr:
+  bertscore_mrr:
     # instructions to instantiate metric, preferrably torchmetrics.Metric
     metric:
-      _target_: src.evaluation.retrieval.MRR
+      _target_: src.evaluation.retrieval.BERTScoreMRR
       # hidden_size: ${students.individual.model.cfg.hidden_size}
     # either on_step: true or on_epoch: true
     on_step: true
     compute: 
-      cls: "outputs:cls"
+      last_hidden_representation: "outputs:last_hidden_representation"
       labels: "outputs:labels"

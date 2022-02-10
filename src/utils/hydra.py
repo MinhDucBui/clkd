@@ -2,7 +2,7 @@ import functools
 from dataclasses import dataclass
 from typing import Any, Callable, List
 from hydra.utils import get_method
-from src.models.modules.pooling import cls
+from src.models.modules.pooling import cls, mean
 from omegaconf import DictConfig, OmegaConf, open_dict
 from typing import Union
 import re
@@ -113,11 +113,35 @@ def get_cls_labels(outputs, batch):
     outputs["labels"] = batch["labels"]
     return outputs
 
+def get_mean_labels(outputs, batch):
+    outputs["mean_last_representation"] = mean(outputs.hidden_states[-1], batch["attention_mask"])
+    outputs["labels"] = batch["labels"]
+    return outputs
+
+def get_last_hidden_representation_labels(outputs, batch):
+    outputs["last_hidden_representation"] = outputs.hidden_states[-1]
+    outputs["labels"] = batch["labels"]
+    return outputs
+
 
 # list of dictionaries flattend to one dictionary
 def prepare_retrieval_eval(outputs):
 
     return {
         "cls": outputs["cls"],
+        "labels": outputs["labels"],
+    }
+
+def prepare_retrieval_eval_mean(outputs):
+
+    return {
+        "mean_last_representation": outputs["mean_last_representation"],
+        "labels": outputs["labels"],
+    }
+
+def prepare_retrieval_bertscore_eval(outputs):
+
+    return {
+        "last_hidden_representation": outputs["last_hidden_representation"],
         "labels": outputs["labels"],
     }
