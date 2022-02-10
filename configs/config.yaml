@@ -55,11 +55,17 @@ students:
     # Can also use 'teacher' as model name: Evaluate with teacher
 
     #retrieval: null
-    retrieval:
+    retrieval_cos_cls:
+      evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+        - ((student_turkish, tr), (student_english, en))
+    retrieval_cos_mean:
+      evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+        - ((student_turkish, tr), (student_english, en))
+    retrieval_bertscore:
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
         - ((student_turkish, tr), (student_english, en))
 
-    # mlm: null
+    #mlm: null
     mlm:
       aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
       evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
@@ -83,8 +89,15 @@ trainer:
 
 callbacks:
   model_checkpoint:
-    monitor: "val/retrieval/student_turkish_tr-student_english_en/mrr"
+    monitor: "val/retrieval_bertscore/student_turkish_tr-student_english_en/bertscore_mrr"
     every_n_train_steps: 5001 # add 1 to trainer.val_check_interval
+    
+# If you want to do one val epoch before training
+val_before_training: True
+
+# If you want to conntinue training, then give checkpoint path
+# Otherwise, delete ckpt_path
+# ckpt_path: "/home/ma/ma_ma/ma_mbui/clkd/logs/runs/2022-02-08/21-22-52/checkpoints/last.ckpt"
 
 # Random Seed
 seed: 42
@@ -96,7 +109,7 @@ seed: 42
 work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
-data_dir: /pfs/work7/workspace/scratch/ma_mkuc-clkd_data
+data_dir: /pfs/work7/workspace/scratch/ma_mbui-ma_mbui-clkd
 
 # Path to CC100 Folder for MLM pretraining
 cc: ${data_dir}/cc100

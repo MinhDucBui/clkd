@@ -67,17 +67,26 @@ def train(config: DictConfig) -> Optional[float]:
         trainer=trainer,
         callbacks=callbacks,
         logger=logger,
-    )
+    )    
     
-    # Do first validation of model
-    log.info("Do one validation epoch before training.")
-    trainer.validate(model=distillation,
-                     datamodule=distillation.datamodule)
+    if "ckpt_path" in config.keys():
+        ckpt_path = config.ckpt_path
+    else:
+        ckpt_path = None
+
+    if config.val_before_training:
+        # Do first validation of model
+        log.info("Do one validation epoch before training.")
+        trainer.validate(model=distillation,
+                         datamodule=distillation.datamodule,
+                         ckpt_path=ckpt_path
+                         )
 
     # Train the model
     log.info("Starting training!")
     trainer.fit(model=distillation,
-                datamodule=distillation.datamodule
+                datamodule=distillation.datamodule,
+                ckpt_path=ckpt_path
                 )
 
     # Evaluate model on test set, using the best model achieved during training
