@@ -11,15 +11,23 @@ log = utils.get_logger(__name__)
 
 
 class LossHiddenMSE(nn.Module):
-    def __init__(self, mapping):
+    def __init__(self, mapping, cls_token_weight=1.0):
         super().__init__()
         self.mapping = mapping
+        self.cls_token_weight = cls_token_weight
 
     def forward(self, teacher_outputs, student_outputs):
         hidden_loss = 0
         for key, value in self.mapping.items():
-            hidden_loss += F.mse_loss(teacher_outputs['hidden_states'][value],
-                                      student_outputs['hidden_states'][key])
+            if self.cls_token_weight == 1.0:
+                hidden_loss += F.mse_loss(teacher_outputs['hidden_states'][value],
+                                          student_outputs['hidden_states'][key])
+            else:
+                hidden_loss_cls = F.mse_loss(teacher_outputs['hidden_states'][value][:, 0, :],
+                                              student_outputs['hidden_states'][key][:, 0, :]) * self.cls_token_weight
+                hidden_loss += F.mse_loss(teacher_outputs['hidden_states'][value][:, 1:, :],
+                                          student_outputs['hidden_states'][key][:, 1:, :])
+                hidden_loss += hidden_loss_cls
 
         return hidden_loss
 
@@ -38,8 +46,9 @@ class LossHiddenMSE(nn.Module):
 
 
 class LossHiddenCos(nn.Module):
-    def __init__(self, mapping):
+    def __init__(self, mapping, cls_token_weight=1.0):
         super().__init__()
+        self.cls_token_weight = cls_token_weight
         self.cosine_loss_fct = nn.CosineEmbeddingLoss(reduction="mean")
         self.mapping = mapping
 
@@ -70,8 +79,9 @@ class LossHiddenCos(nn.Module):
     
     
 class LossAttMSE(nn.Module):
-    def __init__(self, mapping):
+    def __init__(self, mapping, cls_token_weight=1.0):
         super().__init__()
+        self.cls_token_weight = cls_token_weight
         self.mapping = mapping
         self.mapping = {key - 1: value - 1 for (key, value) in self.mapping.items()}
 

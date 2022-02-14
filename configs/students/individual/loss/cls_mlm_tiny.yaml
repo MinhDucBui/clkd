@@ -1,0 +1,24 @@
+_target_: src.loss.loss.GeneralLoss
+defaults:
+  - base_loss@base_loss.mlm: mlm.yaml
+  - base_loss@base_loss.softtargets_kl: softtargets_kl.yaml
+  - base_loss@base_loss.embedding_mse: embedding_mse.yaml
+  - base_loss@base_loss.hidden_mse: hidden_mse.yaml
+  - base_loss@base_loss.att_mse: att_mse.yaml
+
+base_loss:
+  softtargets_kl:
+    temperature: 4.0
+  hidden_mse:
+    mapping: {1: 1, 2: 4, 3: 8, 4: 12}
+    cls_token_weight: 20
+  att_mse:
+    mapping: {1: 1, 2: 4, 3: 8, 4: 12}
+    cls_token_weight: 20
+
+loss_weighting:
+  mlm: 0.0005
+  softtargets_kl: 0.0005
+  embedding_mse: 0.333
+  hidden_mse: 0.333
+  att_mse: 0.333

@@ -16,6 +16,7 @@ class GeneralLoss(nn.Module):
         self.base_loss = base_loss
         self.loss_weighting = loss_weighting
 
+
     def forward(self, teacher_outputs, student_outputs, labels):
         total_loss = 0
         for loss_name, loss in self.base_loss.items():
