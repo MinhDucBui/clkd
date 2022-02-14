@@ -81,7 +81,7 @@ datamodule:
 trainer:
   log_every_n_steps: 200
   val_check_interval: 5000
-  max_steps: 1500000
+  max_steps: 600000
   gpus: -1
   num_nodes: 1
   strategy: ddp
