@@ -17,7 +17,13 @@ defaults:
 
   # Define (Train/Val) Datamodule
   - datamodule@datamodule.train: cc100.yaml
-  - datamodule@datamodule.val: tatoeba.yaml
+  - datamodule@datamodule.val_retrieval: tatoeba.yaml
+  - datamodule@datamodule.val_mlm: tatoeba_mlm.yaml
+
+  - evaluation@evaluation.mlm: mlm.yaml
+  - evaluation@evaluation.retrieval_cos_mean: retrieval_cos_mean.yaml
+  - evaluation@evaluation.retrieval_cos_cls: retrieval_cos_cls.yaml
+  - evaluation@evaluation.retrieval_bertscore: retrieval_bertscore.yaml
 
   # Utils
   - callbacks: default.yaml # set this to null if you don't want to use callbacks
@@ -51,25 +57,25 @@ students:
   # E.g.
   # - ((student_1, ss), (student_0, ss))
 
-  evaluation:
-    # Can also use 'teacher' as model name: Evaluate with teacher
+evaluation:
+  # Can also use 'teacher' as model name: Evaluate with teacher
 
-    #retrieval: null
-    retrieval_cos_cls:
-      evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_turkish, tr), (student_english, en))
-    retrieval_cos_mean:
-      evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_turkish, tr), (student_english, en))
-    retrieval_bertscore:
-      evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
-        - ((student_turkish, tr), (student_english, en))
+  #retrieval: null
+  retrieval_cos_cls:
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+      - ((student_turkish, tr), (student_english, en))
+  retrieval_cos_mean:
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+      - ((student_turkish, tr), (student_english, en))
+  retrieval_bertscore:
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+      - ((student_turkish, tr), (student_english, en))
 
-    #mlm: null
-    mlm:
-      aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
-      evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
-        - ((student_turkish, tr), (student_english, en))
+  #mlm: null
+  mlm:
+    aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
+      - ((student_turkish, tr), (student_english, en))
 
 datamodule:
   val:

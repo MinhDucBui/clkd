@@ -12,7 +12,7 @@ def assert_functions(cfg):
         students_cfg[model_name] = model_cfg
     embedding_sharing_cfg = cfg.students.embed_sharing
     weight_sharing_cfg = cfg.students.weight_sharing_across_students
-    eval_cfg = cfg.students["evaluation"]
+    eval_cfg = cfg["evaluation"]
     eval_cfg = initialize_evaluation_cfg(eval_cfg)
     if "callbacks" in cfg.keys() and "model_checkpoint" in cfg["callbacks"].keys():
         model_checkpoint_cfg = cfg["callbacks"]["model_checkpoint"]

@@ -1,5 +1,4 @@
-defaults:
-  - ../../collate_fn@collate_fn: padding
+datamodule: val_retrieval
 
 evaluate_with: ??? # E.g. ((0, "en"), (0, "ht"))
 

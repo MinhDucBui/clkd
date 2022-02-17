@@ -1,8 +1,4 @@
 defaults:
-  - evaluation@evaluation.mlm: mlm.yaml
-  - evaluation@evaluation.retrieval_cos_mean: retrieval_cos_mean.yaml
-  - evaluation@evaluation.retrieval_cos_cls: retrieval_cos_cls.yaml
-  - evaluation@evaluation.retrieval_bertscore: retrieval_bertscore.yaml
   - individual: default.yaml
 
 weight_sharing_across_students: false

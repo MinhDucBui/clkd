@@ -37,41 +37,30 @@ class TatoebaDataModule(BaseDataModule):
         See: https://huggingface.co/datasets/glue
         """
         # download with Huggingface datasets
-        for language_pair in self.languages:
-            try:
-                dataset = load_dataset_builder("tatoeba", lang1=language_pair[0], lang2=language_pair[1])
-                dataset.download_and_prepare()
-            except FileNotFoundError:
-                language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
-                dataset = load_dataset_builder("tatoeba", lang1=language_pair[0], lang2=language_pair[1])
-                dataset.download_and_prepare()
+        try:
+            dataset = load_dataset_builder("tatoeba", lang1=self.languages[0], lang2=self.languages[1])
+            dataset.download_and_prepare()
+        except FileNotFoundError:
+            self.languages[1], self.languages[0] = self.languages[0], self.languages[1]
+            dataset = load_dataset_builder("tatoeba", lang1=self.languages[0], lang2=self.languages[1])
+            dataset.download_and_prepare()
 
     def setup(self, stage: Optional[str] = None):
 
         split_samples = '{}[0:{}]'.format("train", self.max_length)
-        index = 0
-        for language_pair in self.languages:
-            try:
-                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
-            except FileNotFoundError:
-                language_pair[1], language_pair[0] = language_pair[0], language_pair[1]
-                dataset = load_dataset("tatoeba", lang1=language_pair[0], lang2=language_pair[1], split=split_samples)
+        try:
+            dataset = load_dataset("tatoeba", lang1=self.languages[0], lang2=self.languages[1], split=split_samples)
+        except FileNotFoundError:
+            self.languages[1], self.languages[0] = self.languages[0], self.languages[1]
+            dataset = load_dataset("tatoeba", lang1=self.languages[0], lang2=self.languages[1], split=split_samples)
 
-            src = preprocess_tatoeba(dataset, self.tokenizer, language_pair[0], self.language_mapping)
-            trg = preprocess_tatoeba(dataset, self.tokenizer, language_pair[1],
-                                     self.language_mapping,
-                                     start_index=len(src))
+        src = preprocess_tatoeba(dataset, self.tokenizer, self.languages[0], self.language_mapping)
+        trg = preprocess_tatoeba(dataset, self.tokenizer, self.languages[1],
+                                 self.language_mapping,
+                                 start_index=len(src))
 
-            if stage in (None, "val"):
-                for task_name in self.eval_cfg.keys():
-                    # TODO: Change after student cfg?
-                    self.validation_dataset_mapping[index] = {"languages": "_".join(language_pair),
-                                                              "task": task_name}
-                    index += 1
-
-                    self.val_collate_fn.append(hydra.utils.instantiate(self.val_collate_fn_dict[task_name],
-                                                                       tokenizer=self.tokenizer)())
-                    self.data_val.append(concatenate_datasets([src, trg]))
+        if stage in (None, "val"):
+            self.data_val = concatenate_datasets([src, trg])
 
 
 def preprocess_tatoeba(dataset, tokenizer, language, language_mapping, start_index=0):

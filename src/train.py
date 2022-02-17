@@ -1,5 +1,5 @@
 from typing import List, Optional
-from src.distillation.base_module import BaseModule
+from src.datamodules.mixed_data import MixedDataModule
 import hydra
 from omegaconf import DictConfig
 from pytorch_lightning import (
@@ -41,8 +41,12 @@ def train(config: DictConfig) -> Optional[float]:
                 log.info(f"Instantiating config callback for <{cb_name}>")
                 config = config_callback(config, cb_conf)
 
-    # Init Module
     distillation: LightningModule = hydra.utils.instantiate(config.distillation_setup, cfg=config)
+
+    datamodule = MixedDataModule(config.datamodule,
+                                 language_mapping=distillation.language_mapping,
+                                 student_tokenizers=distillation.student_tokenizers,
+                                 teacher_tokenizer=distillation.teacher_tokenizer)
 
     # Init lightning loggers
     logger: List[LightningLoggerBase] = []
@@ -63,12 +67,12 @@ def train(config: DictConfig) -> Optional[float]:
     utils.log_hyperparameters(
         config=config,
         model=distillation,
-        datamodule=distillation.datamodule,
+        datamodule=datamodule,
         trainer=trainer,
         callbacks=callbacks,
         logger=logger,
-    )    
-    
+    )
+
     if "ckpt_path" in config.keys():
         ckpt_path = config.ckpt_path
     else:
@@ -78,14 +82,14 @@ def train(config: DictConfig) -> Optional[float]:
         # Do first validation of model
         log.info("Do one validation epoch before training.")
         trainer.validate(model=distillation,
-                         datamodule=distillation.datamodule,
+                         datamodule=datamodule,
                          ckpt_path=ckpt_path
                          )
 
     # Train the model
     log.info("Starting training!")
     trainer.fit(model=distillation,
-                datamodule=distillation.datamodule,
+                datamodule=datamodule,
                 ckpt_path=ckpt_path
                 )
 
@@ -99,7 +103,7 @@ def train(config: DictConfig) -> Optional[float]:
     utils.finish(
         config=config,
         model=distillation,
-        datamodule=distillation.datamodule,
+        datamodule=datamodule,
         trainer=trainer,
         callbacks=callbacks,
         logger=logger,
