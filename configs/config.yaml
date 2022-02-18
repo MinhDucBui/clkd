@@ -78,8 +78,11 @@ evaluation:
       - ((student_turkish, tr), (student_english, en))
 
 datamodule:
-  val:
-    max_length: 1000
+  val_retrieval:
+    max_length: 100
+    batch_size: 1
+  val_mlm:
+    max_length: 100
     batch_size: 1
   train:
     batch_size: 2
