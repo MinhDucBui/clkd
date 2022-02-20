@@ -79,10 +79,10 @@ evaluation:
 
 datamodule:
   val_retrieval:
-    max_length: 100
+    max_length: 1000
     batch_size: 1
   val_mlm:
-    max_length: 100
+    max_length: 1000
     batch_size: 1
   train:
     batch_size: 2
