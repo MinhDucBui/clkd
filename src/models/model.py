@@ -13,14 +13,13 @@ from transformers import (
 from src.models.architecture.tiny_model import TinyModel
 
 
-
 def initialize_model(cfg, teacher=None):
     """Teacher and student consists of tokenizer, model and embeddings.
 
     Returns:
 
     """
-    
+
     tokenizer = hydra.utils.instantiate(cfg.tokenizer)
     OmegaConf.set_struct(cfg, True)
     with open_dict(cfg):
@@ -32,8 +31,10 @@ def initialize_model(cfg, teacher=None):
         tokenizer.model_max_length = architecture_cfg.max_position_embeddings
 
     if teacher is not None:
-        # Delete old embedding layer to save some space
-        model.base_model.embeddings = None
+        if model.__class__.__name__ == 'TinyModel':
+            model.base.base_model.embeddings = None
+        else:
+            model.base_model.embeddings = None
         # Only initialize multiple embeddings for students.
         embeddings = initialize_embeddings(cfg, teacher)
     else:

@@ -24,7 +24,7 @@ class TinyModel(nn.Module):
             self.projections = nn.ModuleList(
                 [nn.Linear(config.hidden_size, self.fit_size) for _ in range(config.num_hidden_layers + 1)])
 
-        self.base_model = self.base.base_model
+        #self.base_model = self.base.base_model
 
     def init_weights_from_teacher(self, teacher_model):
         """
