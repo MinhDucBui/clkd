@@ -1,16 +1,16 @@
 _target_: src.models.model.get_tiny_model
 
 defaults:
-  - automodel.yaml
+  - xlmr.yaml
 
 teacher: None
 
 cfg:
   hidden_size: 768 # must be dividable by no. of heads!
-  num_hidden_layers: 4
+  num_hidden_layers: 6
 
 weights_from_teacher:
   embeddings: False
   transformer_blocks: False
 
-mapping: {0: 0, 1: 3, 2: 7, 3: 11} # Careful! Layer numbering from 0. E.g. Bert has 0, ..., 11 layers!
+mapping: {0: 0, 1: 2, 2: 4, 3: 6, 4: 8, 5: 11} # Careful! Layer numbering from 0. E.g. Bert has 0, ..., 11 layers!
