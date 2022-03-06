@@ -83,10 +83,12 @@ def tie_output_embeddings(tie_output_embeddings_cfg, models, embeddings):
         language = list(embeddings[index].keys())[0]
         input_embeddings = embeddings[index][language].word_embeddings
         model_type = models[index].base.config.model_type
+        output_embeddings = None
         if "xlm-roberta" == model_type:
             output_embeddings = models[index].base.lm_head.decoder
         elif "bert" == model_type:
             output_embeddings = models[index].base.cls.predictions.decoder
+        assert output_embeddings, "Model Type not implemented yet in tie_output_embeddings"
         output_embeddings.weight = input_embeddings.weight
         if getattr(output_embeddings, "bias", None) is not None:
             output_embeddings.bias.data = torch.nn.functional.pad(
