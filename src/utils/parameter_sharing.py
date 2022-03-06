@@ -2,6 +2,7 @@ from src.utils.debug import debug_id_embeddings
 from src.utils.utils import convert_cfg_tuple
 from transformers import BertForMaskedLM
 import sys
+import torch
 
 LOOKUP_TABLE = {BertForMaskedLM: {"layer": "base_model.encoder.layer"}}
 
@@ -70,3 +71,34 @@ def replace_layer(students, origin_id, origin_layer_n, replace_student_id, repla
             # print(students[replace_student_id][test_lang].base_model.encoder.layer)
         else:
             sys.exit("Get Layer for this Model Type is not implemented!!")
+
+
+def tie_output_embeddings(tie_output_embeddings_cfg, models, embeddings):
+    
+    if not tie_output_embeddings_cfg:
+        return
+    
+    for index in range(len(models)):
+        assert len(embeddings[index]) == 1, "Tie Output Embedding only for monolingual implemented!"
+        language = list(embeddings[index].keys())[0]
+        input_embeddings = embeddings[index][language].word_embeddings
+        model_type = models[index].base.config.model_type
+        output_embeddings = None
+        if "xlm-roberta" == model_type:
+            output_embeddings = models[index].base.lm_head.decoder
+        elif "bert" == model_type:
+            output_embeddings = models[index].base.cls.predictions.decoder
+        assert output_embeddings, "Model Type not implemented yet in tie_output_embeddings"
+        output_embeddings.weight = input_embeddings.weight
+        if getattr(output_embeddings, "bias", None) is not None:
+            output_embeddings.bias.data = torch.nn.functional.pad(
+                output_embeddings.bias.data,
+                (
+                    0,
+                    output_embeddings.weight.shape[0] - output_embeddings.bias.shape[0],
+                ),
+                "constant",
+                0,
+            )
+        if hasattr(output_embeddings, "out_features") and hasattr(input_embeddings, "num_embeddings"):
+            output_embeddings.out_features = input_embeddings.num_embeddings

@@ -314,6 +314,7 @@ def print_config(
         config: DictConfig,
         fields: Sequence[str] = (
                 "distillation_setup",
+                "evaluation",
                 "trainer",
                 "teacher",
                 "students",
@@ -378,6 +379,7 @@ def log_hyperparameters(
     hparams["teacher"] = config["teacher"]
     hparams["datamodule"] = config["datamodule"]
     hparams["students"] = config["students"]
+    hparams["evaluation"] = config["evaluation"]
     hparams["distillation_setup"] = config["distillation_setup"]
     if "seed" in config:
         hparams["seed"] = config["seed"]

@@ -1,2 +1,2 @@
-_target_: src.loss.base_loss.base.LossSoftTargetsKL
+_target_: src.loss.base_loss.targets_loss.LossSoftTargetsKL
 temperature: 4.0

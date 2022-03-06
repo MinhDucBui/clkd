@@ -3,7 +3,7 @@ import copy
 from src.utils.utils import name_model_for_logger
 
 
-def create_mapping(students_cfg):
+def create_mapping(students_cfg, evaluation_cfg, datamodule_cfg):
     """Create mappings necessary for our distillation module.
 
     Args:
@@ -14,8 +14,19 @@ def create_mapping(students_cfg):
     """
     language_mapping = create_language_mapping(students_cfg.individual)
     student_mapping = create_model_mapping(students_cfg.individual)
-    validation_mapping = create_validation_mapping(students_cfg.evaluation, student_mapping, stage="val")
-    return language_mapping, student_mapping, validation_mapping
+    val_dataset_mapping = create_val_data_mapping(datamodule_cfg)
+    validation_mapping = create_validation_mapping(evaluation_cfg, student_mapping, stage="val")
+    return language_mapping, student_mapping, validation_mapping, val_dataset_mapping
+
+
+def create_val_data_mapping(datamodule_cfg):
+    index = 0
+    val_dataset_mapping = {}
+    for key, value in datamodule_cfg.items():
+        if "val" in key:
+            val_dataset_mapping[index] = key
+            index += 1
+    return val_dataset_mapping
 
 
 def create_model_mapping(students_model_cfg):
@@ -93,7 +104,7 @@ def create_validation_mapping(evaluation_cfg, model_mapping, stage="val"):
         new_item = {}
         for eval_model_tuple in task_cfg["evaluate_with"]:
             new_item["task_name"] = task_cfg.logger.name
-            new_item["dataset"] = [eval_model[1] for eval_model in eval_model_tuple]
+            new_item["datamodule"] = task_cfg["datamodule"]
             for metric_name in getattr(task_cfg, "metrics").keys():
                 new_item["metric_name"] = metric_name
                 new_item["cfg"] = {key: task_cfg[key] for key in ["apply", "step_outputs", "metrics"]}

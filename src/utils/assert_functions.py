@@ -12,16 +12,22 @@ def assert_functions(cfg):
         students_cfg[model_name] = model_cfg
     embedding_sharing_cfg = cfg.students.embed_sharing
     weight_sharing_cfg = cfg.students.weight_sharing_across_students
-    eval_cfg = cfg.students["evaluation"]
+    eval_cfg = cfg["evaluation"]
     eval_cfg = initialize_evaluation_cfg(eval_cfg)
     if "callbacks" in cfg.keys() and "model_checkpoint" in cfg["callbacks"].keys():
         model_checkpoint_cfg = cfg["callbacks"]["model_checkpoint"]
         assert_model_checkpoint_cfg(students_cfg, eval_cfg, model_checkpoint_cfg)
 
     # Assertion Functions
+    assert_datamodule_cfg(cfg.datamodule)
     assert_eval_cfg(students_cfg, eval_cfg)
     assert_embedding_cfg(students_cfg, embedding_sharing_cfg)
     assert_weight_sharing_cfg(students_cfg, weight_sharing_cfg)
+
+
+def assert_datamodule_cfg(data_cfg):
+    for key, value in data_cfg.items():
+        assert "_target_" in value.keys(), "No _target_ specified in datamodule {}".format(key)
 
 
 def assert_model_checkpoint_cfg(students_cfg, eval_cfg, model_checkpoint_cfg):

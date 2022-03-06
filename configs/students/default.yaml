@@ -1,6 +1,4 @@
 defaults:
-  - evaluation@evaluation.mlm: mlm.yaml
-  - evaluation@evaluation.retrieval: retrieval.yaml
   - individual: default.yaml
 
 weight_sharing_across_students: false
@@ -17,3 +15,5 @@ embed_sharing: "in_each_model"
 # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
 # E.g.
 # - ((student_1, ss), (student_0, ss))
+
+tie_output_embeddings: False

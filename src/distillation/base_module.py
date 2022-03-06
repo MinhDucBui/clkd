@@ -12,9 +12,7 @@ from src.utils.utils import keep_only_model_forward_arguments, get_model_languag
     append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
-from src.datamodules.mixed_data import MixedDataModule
-import itertools
-from src.utils.parameter_sharing import embedding_sharing, weight_sharing
+from src.utils.parameter_sharing import embedding_sharing, weight_sharing, tie_output_embeddings
 from src.utils.debug import debug_embedding_updating
 
 log = utils.get_logger(__name__)
@@ -46,15 +44,12 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             self.students_model_cfg[model_name] = model_cfg
         self.embedding_sharing_cfg = cfg.students.embed_sharing
         self.weight_sharing_cfg = cfg.students.weight_sharing_across_students
-        self.validation_epoch_index = 0
 
-        # Initialize Evaluation
-        self.evaluation_cfg = self.students_cfg.evaluation
-        self.evaluation_cfg = initialize_evaluation_cfg(self.evaluation_cfg)
+        self.evaluation_cfg = initialize_evaluation_cfg(cfg.evaluation)
 
         # Map language to id, student to languages and get validation tasks
-        self.language_mapping, self.student_mapping, self.validation_mapping \
-            = create_mapping(self.students_cfg)
+        self.language_mapping, self.student_mapping, self.validation_mapping, self.val_dataset_mapping \
+            = create_mapping(self.students_cfg, self.evaluation_cfg, cfg.datamodule)
 
         self.number_of_models = len(self.student_mapping["model_id"])
 
@@ -65,13 +60,10 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
         self.initialize_teacher()
-        
+
         # Init Students
         self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
         self.initialize_student_components()
-        # Init Data Module
-        log.info(f"Instantiating datamodule")
-        self.initialize_datamodule()
 
     def initialize_teacher(self):
         self.teacher_tokenizer, self._teacher, _ = initialize_model(self.teacher_cfg)
@@ -90,30 +82,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         embedding_sharing(self.embeddings, self.embedding_sharing_cfg, self.student_mapping)
         weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
-
-    def initialize_datamodule(self):
-        if hasattr(self.data_cfg, "_target_"):
-            self.datamodule = hydra.utils.instantiate(self.data_cfg,
-                                                      languages=list(self.language_mapping["id_lang"].values()),
-                                                      language_mapping=self.language_mapping,
-                                                      s_tokenizer=self.student_tokenizers,
-                                                      t_tokenizer=self.teacher_tokenizer)
-
-        else:
-            val_languages = []
-            # Get all languages that are needed for validation
-            for task_name, task_cfg in self.evaluation_cfg.items():
-                for evaluate_with_tuple in task_cfg["evaluate_with"]:
-                    val_languages.append([evaluate_model[1] for evaluate_model in evaluate_with_tuple])
-            val_languages.sort()
-            val_languages = list(k for k, _ in itertools.groupby(val_languages))
-            self.datamodule = MixedDataModule(self.data_cfg,
-                                              train_languages=list(self.language_mapping["id_lang"].values()),
-                                              eval_cfg=self.evaluation_cfg,
-                                              val_languages=val_languages,
-                                              language_mapping=self.language_mapping,
-                                              s_tokenizer=self.student_tokenizers,
-                                              t_tokenizer=self.teacher_tokenizer)
+        tie_output_embeddings(self.students_cfg.tie_output_embeddings, self.model, self.embeddings)
 
     def base_training_step(self, batch, batch_idx, optimizer_idx=0):
         """Base Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
@@ -219,16 +188,13 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         val_outputs = {}
 
-        # Get language and task for current validation set with index dataloader_idx
-        language_pair = self.datamodule.validation_dataset_mapping[dataloader_idx]["languages"].split("_")
-        task_name = self.datamodule.validation_dataset_mapping[dataloader_idx]["task"]
+        evaluation_name = self.val_dataset_mapping[dataloader_idx]
 
         # Go into self.validation_mapping and get which model should be validated (given language and task from
         # previous step) and get the evaluation instructions.
         # Order of languages does not matter
         models_cfg = [single_model for single_model in self.validation_mapping
-                      if set(single_model["dataset"]) == set(language_pair)
-                      and single_model["task_name"] == task_name]
+                      if single_model["datamodule"] == evaluation_name]
 
         for model_cfg in models_cfg:
 
@@ -257,7 +223,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
                 if cleaned_batch["input_ids"].nelement() == 0:
                     continue
-                
+
                 # TODO: Hardcoded, retrieval only needs to be computed once...
                 # TODO: Best case is that every task only needs to be coded once... Change to this behaviour
                 self.evaluation = model_cfg["cfg"]
@@ -285,6 +251,19 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         Returns:
 
+        """
+
+        """
+        for name, param in self.model[0].named_parameters():
+            if param.requires_grad:
+                if "base.bert.encoder.layer.3.intermediate.dense.weight" == name:
+                    print(name, param.data)
+                if "base.cls.predictions.transform.LayerNorm.bias" == name:
+                    print(name, param.data)
+        for l, emb in self.embeddings[0].items():
+            for name, param in emb.named_parameters():
+                if param.requires_grad:
+                    print(name, param.data)
         """
 
         for model_eval_cfg in self.validation_mapping:

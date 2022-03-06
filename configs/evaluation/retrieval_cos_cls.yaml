@@ -1,0 +1,42 @@
+datamodule: val_retrieval
+
+evaluate_with: ??? # E.g. ((0, "en"), (0, "ht"))
+
+logger:
+  name: "retrieval_cos_cls" # Please set name the same as the cfg name
+  # Todo: Later, just pass the student models in here
+
+# apply
+apply:
+  # a function that takes (batch)
+  batch: null
+  # a function that takes (outputs, batch)
+  outputs:
+    _target_: src.utils.hydra.partial
+    _partial_: src.utils.hydra.get_cls_labels
+  # a function that takes (outputs)
+  step_outputs:
+      _target_: src.utils.hydra.partial
+      _partial_: src.utils.hydra.prepare_retrieval_eval
+
+# str or list of non-conflicting keys
+step_outputs:
+  outputs:
+    - cls
+    - labels
+
+
+# either metrics or val_metrics and test_metrics
+# where the latter
+metrics:
+  # name of the metric used eg for logging
+  mrr:
+    # instructions to instantiate metric, preferrably torchmetrics.Metric
+    metric:
+      _target_: src.evaluation.retrieval.MRR
+      # hidden_size: ${students.individual.model.cfg.hidden_size}
+    # either on_step: true or on_epoch: true
+    on_step: true
+    compute: 
+      cls: "outputs:cls"
+      labels: "outputs:labels"
