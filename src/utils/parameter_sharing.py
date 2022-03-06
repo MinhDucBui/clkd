@@ -74,15 +74,21 @@ def replace_layer(students, origin_id, origin_layer_n, replace_student_id, repla
 
 
 def tie_output_embeddings(tie_output_embeddings_cfg, models, embeddings):
-
+    
     if not tie_output_embeddings_cfg:
         return
-
+    
     for index in range(len(models)):
         assert len(embeddings[index]) == 1, "Tie Output Embedding only for monolingual implemented!"
         language = list(embeddings[index].keys())[0]
         input_embeddings = embeddings[index][language].word_embeddings
-        output_embeddings = models[index].base.cls.predictions.decoder
+        model_type = models[index].base.config.model_type
+        if "xlm-roberta" == model_type:
+            print(models[index])
+            output_embeddings = models[index].base.lm_head.decoder
+            print(output_embeddings)
+        elif "bert" == model_type:
+            output_embeddings = models[index].base.cls.predictions.decoder
         output_embeddings.weight = input_embeddings.weight
         if getattr(output_embeddings, "bias", None) is not None:
             output_embeddings.bias.data = torch.nn.functional.pad(
