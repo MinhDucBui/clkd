@@ -16,4 +16,4 @@ embed_sharing: "in_each_model"
 # E.g.
 # - ((student_1, ss), (student_0, ss))
 
-tie_output_embeddings: True
+tie_output_embeddings: False
