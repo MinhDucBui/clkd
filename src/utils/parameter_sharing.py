@@ -84,9 +84,7 @@ def tie_output_embeddings(tie_output_embeddings_cfg, models, embeddings):
         input_embeddings = embeddings[index][language].word_embeddings
         model_type = models[index].base.config.model_type
         if "xlm-roberta" == model_type:
-            print(models[index])
             output_embeddings = models[index].base.lm_head.decoder
-            print(output_embeddings)
         elif "bert" == model_type:
             output_embeddings = models[index].base.cls.predictions.decoder
         output_embeddings.weight = input_embeddings.weight
