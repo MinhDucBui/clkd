@@ -12,7 +12,7 @@ from src.utils.utils import keep_only_model_forward_arguments, get_model_languag
     append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
-from src.utils.parameter_sharing import embedding_sharing, weight_sharing
+from src.utils.parameter_sharing import embedding_sharing, weight_sharing, tie_output_embeddings
 from src.utils.debug import debug_embedding_updating
 
 log = utils.get_logger(__name__)
@@ -60,7 +60,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
         self.initialize_teacher()
-        
+
         # Init Students
         self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
         self.initialize_student_components()
@@ -82,6 +82,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         embedding_sharing(self.embeddings, self.embedding_sharing_cfg, self.student_mapping)
         weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
+        tie_output_embeddings(self.students_cfg.tie_output_embeddings, self.model, self.embeddings)
 
     def base_training_step(self, batch, batch_idx, optimizer_idx=0):
         """Base Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
@@ -184,7 +185,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         Returns:
 
         """
-        
+
         val_outputs = {}
 
         evaluation_name = self.val_dataset_mapping[dataloader_idx]
@@ -222,7 +223,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
                 if cleaned_batch["input_ids"].nelement() == 0:
                     continue
-                
+
                 # TODO: Hardcoded, retrieval only needs to be computed once...
                 # TODO: Best case is that every task only needs to be coded once... Change to this behaviour
                 self.evaluation = model_cfg["cfg"]
@@ -251,7 +252,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         Returns:
 
         """
-        
+
         """
         for name, param in self.model[0].named_parameters():
             if param.requires_grad:
