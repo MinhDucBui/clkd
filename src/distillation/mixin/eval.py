@@ -161,6 +161,7 @@ class EvalMixin:
             outputs = self.forward(batch={key: value for key, value in batch.items() if key not in ["labels"]},
                                    model_idx=model_idx,
                                    language=language)
+
         if self.evaluation.apply.outputs is not None:
             outputs = self.evaluation.apply.outputs(outputs, batch)
 
