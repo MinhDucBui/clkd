@@ -84,7 +84,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
         tie_output_embeddings(self.students_cfg.tie_output_embeddings, self.model, self.embeddings)
 
-    def teacher_training_step(self, batch, batch_idx) -> None:
+    def teacher_collect_outputs(self, batch, batch_idx) -> None:
         """ Collects teacher outputs from forward pass"""
         for language, single_batch in batch.items():
             # Calculate Teacher Outputs (don't need gradient)
@@ -140,7 +140,6 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         return output
 
-
     def training_step(self, batch, batch_idx, optimizer_idx=0):
         """"
         Defines training loop of the model. Pipeline:
@@ -148,10 +147,10 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
             --> For a given batch, loop over all student models (optimizer corresponds to a model) and compute training pipeline for a student
         """
         if optimizer_idx == 0:
-            self.teacher_training_step(batch, batch_idx)
-        else:
-            output = self.student_training_step(batch, batch_idx, optimizer_idx)
-            return output
+            self.teacher_collect_outputs(batch, batch_idx)
+
+        output = self.student_training_step(batch, batch_idx, optimizer_idx)
+        return output
 
     def forward(self, batch, model_idx, language):
         full_batch = keep_only_model_forward_arguments(self.model[model_idx],
@@ -207,7 +206,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
             # Check for "eval_with" (another model validated with the current model, e.g. retrieval task)
             model_eval_tuples = model_cfg["eval_with"]
-            model_eval_tuples = [[eval_tuple[0], eval_tuple[1].split("_")] for eval_tuple in model_eval_tuples]
+            model_eval_tuples = [[eval_tuple[0], eval_tuple[1].split("_")] for eval_tuple in
+                                 model_eval_tuples]  # ??? why this one is needed?
+
             # Execute evaluation instructions for the model (and eval_with if it exists)
             for current_model_tuple in [model_tuple] + model_eval_tuples:
                 if current_model_tuple[0] == "teacher":
