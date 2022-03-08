@@ -140,17 +140,20 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         return output
 
+    def base_training_step(self, batch, batch_idx, optimizer_idx=0):
+        if optimizer_idx == 0:
+            self.teacher_collect_outputs(batch, batch_idx)
+
+        output = self.student_training_step(batch, batch_idx, optimizer_idx)
+        return output
+
     def training_step(self, batch, batch_idx, optimizer_idx=0):
         """"
         Defines training loop of the model. Pipeline:
             --> First collect teacher outputs for a given batch
             --> For a given batch, loop over all student models (optimizer corresponds to a model) and compute training pipeline for a student
         """
-        if optimizer_idx == 0:
-            self.teacher_collect_outputs(batch, batch_idx)
-
-        output = self.student_training_step(batch, batch_idx, optimizer_idx)
-        return output
+        return self.base_training_step(batch, batch_idx, optimizer_idx)
 
     def forward(self, batch, model_idx, language):
         full_batch = keep_only_model_forward_arguments(self.model[model_idx],
