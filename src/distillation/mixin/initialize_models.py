@@ -37,7 +37,7 @@ class InitializeModelsMixin:
             = create_mapping(self.students_cfg, self.evaluation_cfg, self.cfg.datamodule)
 
         self.number_of_models = len(self.student_mapping["model_id"])
-
+        print(self.student_mapping)
         # Init Teacher Model
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
@@ -118,10 +118,13 @@ class InitializeModelsMixin:
                 origin_id = get_id(sharing_tuple[0], student_mapping)
                 origin_language = sharing_tuple[0][1]
                 origin_embedding = embeddings[origin_id][origin_language]
+                origin_name = self.student_mapping["id_model"][origin_id]["model_name"] + "_" + origin_language
                 for single in sharing_tuple[1:]:
                     replace_student_id = get_id(single, student_mapping)
                     replace_language = single[1]
+                    replace_name = self.student_mapping["id_model"][replace_student_id]["model_name"] + "_" + replace_language
                     embeddings[replace_student_id][replace_language] = origin_embedding
+                    exec("self.%s = self.%s" % (replace_name, origin_name))
 
         # Debug:
         # debug_id_embeddings(embeddings)
