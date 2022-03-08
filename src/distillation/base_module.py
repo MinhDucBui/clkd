@@ -84,54 +84,49 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
         weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
         tie_output_embeddings(self.students_cfg.tie_output_embeddings, self.model, self.embeddings)
 
-    def base_training_step(self, batch, batch_idx, optimizer_idx=0):
-        """Base Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx).
-           In our case: One optimizer corresponds to a model.
+    def teacher_collect_outputs(self, batch, batch_idx) -> None:
+        """ Collects teacher outputs from forward pass"""
+        for language, single_batch in batch.items():
+            # Calculate Teacher Outputs (don't need gradient)
+            with torch.no_grad():
+                full_batch = keep_only_model_forward_arguments(self._teacher,
+                                                               single_batch,
+                                                               remove_additional_keys=["labels"])
+                # MaskedLMOutput --> OrderedDict
+                self.teacher_outputs[language] = self._teacher.forward(**full_batch)  # (bs, seq_length, voc_size)
 
-        Workflow:
-        -> If first iteration, then get the teacher outputs for current batch and save them for next iterations
-        -> Get the language of the model and get the corresponding samples that are in the model (student) language
-        -> Get corresponding Teacher Outputs (in the current model language)
-        -> Calculate Loss and Log
+    def student_training_step(self, batch, batch_idx, optimizer_idx: int):
+        """
+        Defines pipeline for single student training:
+            --> Collect languages of student
+            --> For each language get corresponding teacher outputs
+            --> Calculate loss for all languages of a student model
 
-        Args:
-            batch:
-            batch_idx:
-            optimizer_idx:
-
-        Returns:
-
+        @param batch: dict
+        @param batch_idx: int
+        @param optimizer_idx: int
+        @return: dict
         """
 
         model_idx = optimizer_idx
-        # If first iteration, then get the teacher outputs for current batch and save them for next iterations
-        if model_idx == 0:
-            for language, single_batch in batch.items():
-                # Calculate Teacher Outputs (don't need gradient)
-                with torch.no_grad():
-                    full_batch = keep_only_model_forward_arguments(self._teacher,
-                                                                   single_batch,
-                                                                   remove_additional_keys=["labels"])
-                    # MaskedLMOutput --> OrderedDict
-                    self.teacher_outputs[language] = self._teacher.forward(**full_batch)  # (bs, seq_length, voc_size)
-        abs_loss = 0
-        # Get the language of the model and get the corresponding samples that are in the model (student) language
         model_languages = get_model_language(model_idx, self.student_mapping)
+        # model_languages: All languages that model contains, for monolingual models, there will be one language, for bilingual two, etc.
+        abs_loss = 0
 
-        for language, single_batch in batch.items():
-            if language not in model_languages:
-                continue
+        # Iterate over those languages to get corresponding outputs from teacher
+        assert len(self.teacher_outputs) > 0
 
-            # Get corresponding Teacher Outputs (in the current batch language)
+        for language in model_languages:
+            # Get teacher outputs for a single language
             subset_teacher_output = self.teacher_outputs[language]
-            student_outputs = self.forward(single_batch, model_idx, language)
+            # Get batch item corresponding to this language
+            language_batch = batch[language]
+            # Get student outputs for corresponding language from the batch
+            student_outputs = self.forward(language_batch, model_idx, language)
 
-            # Calculate Loss and Log
-            if "labels" in single_batch.keys():
-                labels = single_batch["labels"]
-            else:
-                labels = None
-            abs_loss += self.loss[model_idx](subset_teacher_output, student_outputs, labels)
+            # Assert that batch contains labels, they are needed for student MLM loss computation
+            assert "labels" in language_batch
+            abs_loss += self.loss[model_idx](subset_teacher_output, student_outputs, labels=language_batch["labels"])
 
         model_name = self.student_mapping["id_model"][model_idx]["model_name"]
         tqdm_dict = {"train" + "/" + model_name + '/train_loss': abs_loss}
@@ -145,10 +140,16 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         return output
 
-    # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
-    # In our case: One optimizer corresponds to a model
     def training_step(self, batch, batch_idx, optimizer_idx=0):
-        output = self.base_training_step(batch, batch_idx, optimizer_idx)
+        """"
+        Defines training loop of the model. Pipeline:
+            --> First collect teacher outputs for a given batch
+            --> For a given batch, loop over all student models (optimizer corresponds to a model) and compute training pipeline for a student
+        """
+        if optimizer_idx == 0:
+            self.teacher_collect_outputs(batch, batch_idx)
+
+        output = self.student_training_step(batch, batch_idx, optimizer_idx)
         return output
 
     def forward(self, batch, model_idx, language):
@@ -205,7 +206,9 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
             # Check for "eval_with" (another model validated with the current model, e.g. retrieval task)
             model_eval_tuples = model_cfg["eval_with"]
-            model_eval_tuples = [[eval_tuple[0], eval_tuple[1].split("_")] for eval_tuple in model_eval_tuples]
+            model_eval_tuples = [[eval_tuple[0], eval_tuple[1].split("_")] for eval_tuple in
+                                 model_eval_tuples]  # ??? why this one is needed?
+
             # Execute evaluation instructions for the model (and eval_with if it exists)
             for current_model_tuple in [model_tuple] + model_eval_tuples:
                 if current_model_tuple[0] == "teacher":
