@@ -63,7 +63,7 @@ class EvalMixin:
     log: Callable
 
     def __init__(self) -> None:
-
+        super().__init__()
         self.evaluation = DictConfig({})
         self.metrics = DictConfig({})
 

@@ -2,23 +2,20 @@ import copy
 import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
+from src.distillation.mixin.initialize_models import InitializeModelsMixin
 import torch
 from omegaconf import DictConfig
 from src.utils import utils
-from src.models.model import initialize_model
 from src.models.modules.utils import change_embedding_layer
-import hydra
 from src.utils.utils import keep_only_model_forward_arguments, get_model_language, \
-    append_torch_in_dict, initialize_evaluation_cfg, get_subset_cleaned_batch
+    append_torch_in_dict, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
-from src.utils.mappings import create_mapping
-from src.utils.parameter_sharing import embedding_sharing, weight_sharing, tie_output_embeddings
 from src.utils.debug import debug_embedding_updating
 
 log = utils.get_logger(__name__)
 
 
-class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
+class BaseModule(OptimizerMixin, EvalMixin, InitializeModelsMixin, pl.LightningModule):
 
     def __init__(
             self,
@@ -32,57 +29,11 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         self.save_hyperparameters()
         self.cfg = cfg
-        self.teacher_cfg = cfg.teacher
-        self.students_cfg = cfg.students
-        self.individual_students_cfg = cfg.students.individual
         self.data_cfg = cfg.datamodule
         self.trainer_cfg = cfg.trainer
-        self.students_model_cfg = {}
-        for model_name, model_cfg in self.individual_students_cfg.items():
-            if "student_" not in model_name:
-                continue
-            self.students_model_cfg[model_name] = model_cfg
-        self.embedding_sharing_cfg = cfg.students.embed_sharing
-        self.weight_sharing_cfg = cfg.students.weight_sharing_across_students
-
-        self.evaluation_cfg = initialize_evaluation_cfg(cfg.evaluation)
-
-        # Map language to id, student to languages and get validation tasks
-        self.language_mapping, self.student_mapping, self.validation_mapping, self.val_dataset_mapping \
-            = create_mapping(self.students_cfg, self.evaluation_cfg, cfg.datamodule)
-
-        self.number_of_models = len(self.student_mapping["model_id"])
 
         pl.LightningModule.__init__(self)
         super().__init__()
-
-        # Init Teacher Model
-        log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
-        self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
-        self.initialize_teacher()
-
-        # Init Students
-        self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
-        self.initialize_student_components()
-
-    def initialize_teacher(self):
-        self.teacher_tokenizer, self._teacher, _ = initialize_model(self.teacher_cfg)
-        self._teacher.eval()
-
-    def initialize_student_components(self):
-        for model_name, model_cfg in self.students_model_cfg.items():
-            tokenizer, model, embeddings = initialize_model(model_cfg, self._teacher)
-            exec("self.%s = %s" % (model_name, "model"))
-            for language, embedding in embeddings.items():
-                exec("self.%s = %s" % (model_name + "_" + language, "embedding"))
-            self.model.append(model)
-            self.embeddings.append(embeddings)
-            self.student_tokenizers.append(tokenizer)
-            self.loss.append(hydra.utils.instantiate(model_cfg["loss"]))
-
-        embedding_sharing(self.embeddings, self.embedding_sharing_cfg, self.student_mapping)
-        weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
-        tie_output_embeddings(self.students_cfg.tie_output_embeddings, self.model, self.embeddings)
 
     def teacher_collect_outputs(self, batch, batch_idx) -> None:
         """ Collects teacher outputs from forward pass"""
@@ -241,6 +192,7 @@ class BaseModule(OptimizerMixin, EvalMixin, pl.LightningModule):
                                              model_idx=current_model_tuple[0])
                 if output_step:
                     val_outputs[logger_name] = append_torch_in_dict(output_step, val_outputs[logger_name])
+
         return val_outputs
 
     def validation_epoch_end(self, validation_step_outputs: list):
