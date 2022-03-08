@@ -6,6 +6,8 @@ from src.datamodules.base import BaseDataModule
 from src.utils.utils import add_language_tag_tokenizer
 import hydra
 
+LANGUAGE_MAPPING = {"sw": "swh", "en": "en", "tr": "tr"}
+
 
 class TatoebaDataModule(BaseDataModule):
     def __init__(
@@ -38,21 +40,29 @@ class TatoebaDataModule(BaseDataModule):
         """
         # download with Huggingface datasets
         try:
-            dataset = load_dataset_builder("tatoeba", lang1=self.languages[0], lang2=self.languages[1])
+            dataset = load_dataset_builder("tatoeba", 
+                                           lang1=LANGUAGE_MAPPING[self.languages[0]], 
+                                           lang2=LANGUAGE_MAPPING[self.languages[1]])
             dataset.download_and_prepare()
         except FileNotFoundError:
             self.languages[1], self.languages[0] = self.languages[0], self.languages[1]
-            dataset = load_dataset_builder("tatoeba", lang1=self.languages[0], lang2=self.languages[1])
+            dataset = load_dataset_builder("tatoeba", 
+                                           lang1=LANGUAGE_MAPPING[self.languages[0]], 
+                                           lang2=LANGUAGE_MAPPING[self.languages[1]])
             dataset.download_and_prepare()
 
     def setup(self, stage: Optional[str] = None):
 
         split_samples = '{}[0:{}]'.format("train", self.max_length)
         try:
-            dataset = load_dataset("tatoeba", lang1=self.languages[0], lang2=self.languages[1], split=split_samples)
+            dataset = load_dataset("tatoeba", 
+                                   lang1=LANGUAGE_MAPPING[self.languages[0]], 
+                                   lang2=LANGUAGE_MAPPING[self.languages[1]], split=split_samples)
         except FileNotFoundError:
             self.languages[1], self.languages[0] = self.languages[0], self.languages[1]
-            dataset = load_dataset("tatoeba", lang1=self.languages[0], lang2=self.languages[1], split=split_samples)
+            dataset = load_dataset("tatoeba", 
+                                   lang1=LANGUAGE_MAPPING[self.languages[0]], 
+                                   lang2=LANGUAGE_MAPPING[self.languages[1]], split=split_samples)
 
         src = preprocess_tatoeba(dataset, self.tokenizer, self.languages[0], self.language_mapping)
         trg = preprocess_tatoeba(dataset, self.tokenizer, self.languages[1],
@@ -67,7 +77,7 @@ def preprocess_tatoeba(dataset, tokenizer, language, language_mapping, start_ind
     def split_text(x, language: str):
         return {"text": x["translation"][language]}
     
-    new_dataset = dataset.map(lambda x: split_text(x, language))
+    new_dataset = dataset.map(lambda x: split_text(x, LANGUAGE_MAPPING[language]))
     new_dataset = new_dataset.remove_columns(["translation"]).remove_columns(["id"])
     new_dataset = new_dataset.filter(lambda example: example['text'] is not None)
     new_dataset = new_dataset.add_column("language", [language] * len(new_dataset))
