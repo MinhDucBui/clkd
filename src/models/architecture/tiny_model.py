@@ -4,6 +4,10 @@ from transformers import (
     AutoModelForMaskedLM,
     AutoConfig
 )
+from src.utils import utils
+import re 
+
+log = utils.get_logger(__name__)
 
 
 class TinyModel(nn.Module):
@@ -15,7 +19,6 @@ class TinyModel(nn.Module):
 
         self.base = AutoModelForMaskedLM.from_config(config)
         self.fit_size = teacher_model.config.hidden_size
-
         # It's possible to init student's weights from teacher only if both agree on hidden dimensionality
         if self.fit_size == self.student_hidden_size:
             self.init_weights_from_teacher(teacher_model)
@@ -23,7 +26,7 @@ class TinyModel(nn.Module):
         if self.student_hidden_size != self.fit_size:
             self.projections = nn.ModuleList(
                 [nn.Linear(config.hidden_size, self.fit_size) for _ in range(config.num_hidden_layers + 1)])
-
+            
         #self.base_model = self.base.base_model
 
     def init_weights_from_teacher(self, teacher_model):
@@ -40,10 +43,13 @@ class TinyModel(nn.Module):
                     if layer in name_t:
                         name_s = name_t.replace(layer, ''.join(['layer.', str(key), '.']))
                         new_params[name_s] = copy.deepcopy(param_t)
-            for name_s, param_t in self.base.named_parameters():
+                        log.info("Initialize {} from teachers weight {}".format(name_s, name_t))
+            for name_s, param_s in self.base.named_parameters():
                 if name_s in new_params:
-                    # print("Initialize {} from teachers weight".format(name_s))
                     param_t = new_params[name_s]
+                    exec_name_s = re.sub(r'.([0-9]+).' , r'[\1].', name_s)
+                    exec("self.base.%s = new_params['%s']" % (exec_name_s, name_s))
+                    #param_t = new_params[name_s]
 
         # Copy teacher weights from embedding layer
         if self.init_weights.embeddings:
@@ -55,8 +61,9 @@ class TinyModel(nn.Module):
             for name_s, param_s in self.base.named_parameters():
                 for key, value in new_emb_params.items():
                     if name_s == key:
-                        # print("Initialize {} from teachers weight".format(name_s))
-                        param_s = value
+                        log.info("Initialize {} from teachers embedding".format(name_s))
+                        exec_name_s = re.sub(r'.([0-9]+).' , r'[\1].', name_s)
+                        exec("self.base.%s = value" % (exec_name_s))
 
     def forward(self, input_ids, token_type_ids=None,
                 attention_mask=None, labels=None):
