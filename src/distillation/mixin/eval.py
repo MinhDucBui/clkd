@@ -195,7 +195,8 @@ class EvalMixin:
                 break
         for k, v in self.metrics.items():
             if getattr(v, "on_step", False):
-                self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
+                metric_end = v["metric"].compute()
+                self.log(f"{stage}/{k}", metric_end, prog_bar=True)
             if getattr(v, "on_epoch", False):
                 kwargs: dict = self.prepare_metric_input(outputs, None, v.compute)
                 self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True, on_epoch=True)

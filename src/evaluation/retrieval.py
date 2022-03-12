@@ -3,7 +3,6 @@ import torch
 from tqdm import tqdm
 
 
-
 class MRR(Metric):
     def __init__(self, dist_sync_on_step=False):
         # call `self.add_state`for every internal state that is needed for the metrics computations
@@ -27,9 +26,9 @@ class MRR(Metric):
         preds = src_embeds @ trg_embeds.T
         reciprocal_rank = get_reciprocal_rank(preds)
         # compute final result
-        return reciprocal_rank
+        return reciprocal_rank.mean()
 
-    
+
 class BERTScoreMRR(Metric):
     def __init__(self, dist_sync_on_step=False):
         # call `self.add_state`for every internal state that is needed for the metrics computations
@@ -44,10 +43,13 @@ class BERTScoreMRR(Metric):
         self.labels.append(labels)
 
     def compute(self):
+        self.last_hidden_representation = [x for _, x in sorted(zip(self.labels, self.last_hidden_representation), 
+                                                                key=lambda pair: pair[0])]
         bert_score = compute_bertscore(self.last_hidden_representation)
         reciprocal_rank = get_reciprocal_rank(bert_score)
         # compute final result
-        return reciprocal_rank
+        return reciprocal_rank.mean()
+
 
 def compute_bertscore(last_hidden_representation):
     out, att_mask = concatenate_3d(last_hidden_representation)
@@ -57,8 +59,9 @@ def compute_bertscore(last_hidden_representation):
     src_att = att_mask[: num // 2]
     trg_att = att_mask[num // 2:]
     bert_score = bertscore_pytorch({"last_hidden_state": src_embeds, "attention_mask": src_att},
-                                  {"last_hidden_state": trg_embeds, "attention_mask": trg_att})
+                                   {"last_hidden_state": trg_embeds, "attention_mask": trg_att})
     return bert_score
+
 
 def get_reciprocal_rank(preds: torch.Tensor) -> torch.Tensor:
     """Compute MRR from row-aligned matrices of square query-document pairs.
@@ -106,10 +109,10 @@ def greedy_cos_idf(ref_embedding, hyp_embedding):
 
 
 def bertscore_pytorch(x: dict[str, torch.Tensor], y: dict[str, torch.Tensor]):
-    x_attn_mask: torch.Tensor = x["attention_mask"].clamp(0) # (n_sentences, n_tokens)
-    x_embeds: torch.Tensor = x["last_hidden_state"] # (n_sentences, n_tokens, hidden_dim)
-    y_attn_mask: torch.Tensor = y["attention_mask"].clamp(0) # (n_sentences, n_tokens)
-    y_embeds: torch.Tensor = y["last_hidden_state"] # (n_sentences, n_tokens, hidden_dim)
+    x_attn_mask: torch.Tensor = x["attention_mask"].clamp(0)  # (n_sentences, n_tokens)
+    x_embeds: torch.Tensor = x["last_hidden_state"]  # (n_sentences, n_tokens, hidden_dim)
+    y_attn_mask: torch.Tensor = y["attention_mask"].clamp(0)  # (n_sentences, n_tokens)
+    y_embeds: torch.Tensor = y["last_hidden_state"]  # (n_sentences, n_tokens, hidden_dim)
     N, L, C = x_embeds.shape
     M = torch.full_like(
         torch.Tensor(N, N), fill_value=0, device=x_embeds.device
@@ -131,7 +134,8 @@ def bertscore_pytorch(x: dict[str, torch.Tensor], y: dict[str, torch.Tensor]):
     M = M + M.T - torch.diag(torch.diag(M))
     return M
 
-def concatenate_3d(tensors: list[torch.Tensor], pad_id=-100) -> torch.Tensor:
+
+def concatenate_3d(tensors: list[torch.Tensor], pad_id=-100):
     # (N sequences, L individual sequence length, C num classes -- typically)
     N, L, C = zip(*[tuple(x.shape) for x in tensors])
     out = torch.full_like(
@@ -143,9 +147,9 @@ def concatenate_3d(tensors: list[torch.Tensor], pad_id=-100) -> torch.Tensor:
     start = 0
     for t in tensors:
         num, len_, hidden_dim = t.shape
-        out[start : start + num, :len_, :] = t
-        
-        att_mask[start : start + num, :len_] = torch.full_like(
+        out[start: start + num, :len_, :] = t
+
+        att_mask[start: start + num, :len_] = torch.full_like(
             torch.Tensor(num, len_), fill_value=1, device=t.device
         )
         start += num
