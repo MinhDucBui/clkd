@@ -10,9 +10,9 @@ base_loss:
   softtargets_kl:
     temperature: 4.0
   hidden_mse:
-    mapping: {1: 1, 2: 4, 3: 8, 4: 12}
+    mapping: {1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 12}
   att_mse:
-    mapping: {1: 1, 2: 4, 3: 8, 4: 12}
+    mapping: {1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 12}
 
 loss_weighting:
   mlm: 0.0005

@@ -8,7 +8,7 @@ base_loss:
   softtargets_kl:
     temperature: 4.0
   hidden_cos:
-    mapping: {4: 6}
+    mapping: {6: 12}
 
 loss_weighting:
   mlm: 0.0005

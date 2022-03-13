@@ -4,7 +4,7 @@ defaults:
 
 base_loss:
   hidden_mse:
-    mapping: {4: 6}
+    mapping: {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6}
 
 loss_weighting:
   hidden_mse: 1.0
