@@ -43,11 +43,8 @@ class XtremeTatoebaDataModule(BaseDataModule):
             source_lang = LANG_MAPPING[self.languages[0]]
 
         dataset = load_dataset("xtreme", "tatoeba." + source_lang, split=split_samples)
-        print(dataset)
-        print(self.languages)
         dataset = preprocess_xtreme_tatoeba(dataset, self.tokenizer, self.languages[0], self.languages[1],
                                             self.language_mapping, source=True)
-        print(dataset)
 
         if stage in (None, "val"):
             self.data_val = dataset
