@@ -17,8 +17,8 @@ defaults:
 
   # Define (Train/Val) Datamodule
   - datamodule@datamodule.train: cc100.yaml
-  - datamodule@datamodule.val_retrieval: tatoeba.yaml
-  - datamodule@datamodule.val_mlm: tatoeba_mlm.yaml
+  - datamodule@datamodule.val_retrieval: xtreme_tatoeba.yaml
+  - datamodule@datamodule.val_mlm: xtreme_tatoeba_mlm.yaml
 
   - evaluation@evaluation.mlm: mlm.yaml
   - evaluation@evaluation.retrieval_cos_mean: retrieval_cos_mean.yaml
@@ -36,6 +36,7 @@ defaults:
   - override hydra/job_logging: colorlog
 
 students:
+
   individual:
     # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
     # Order is determined by order of listed item
@@ -77,6 +78,12 @@ evaluation:
     evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
       - ((student_turkish, tr), (student_english, en))
 
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/retrieval_bertscore/student_turkish_tr-student_english_en/bertscore_mrr"
+    every_n_train_steps: 5001 # add 1 to trainer.val_check_interval
+
 datamodule:
   val_retrieval:
     max_length: 1000
@@ -85,7 +92,8 @@ datamodule:
     max_length: 1000
     batch_size: 1
   train:
-    batch_size: 2
+    batch_size: 4
+
 
 trainer:
   log_every_n_steps: 200
@@ -94,19 +102,13 @@ trainer:
   gpus: -1
   num_nodes: 1
   strategy: ddp
-  # resume_from_checkpoint: "/home/ma/ma_ma/ma_mbui/clkd/slurm/logs/runs/2021-12-20/19-58-13/checkpoints/last.ckpt"
-
-callbacks:
-  model_checkpoint:
-    monitor: "val/retrieval_bertscore/student_turkish_tr-student_english_en/bertscore_mrr"
-    every_n_train_steps: 5001 # add 1 to trainer.val_check_interval
     
 # If you want to do one val epoch before training
 val_before_training: True
 
 # If you want to conntinue training, then give checkpoint path
 # Otherwise, delete ckpt_path
-# ckpt_path: "/home/ma/ma_ma/ma_mbui/clkd/logs/runs/2022-02-08/21-22-52/checkpoints/last.ckpt"
+# ckpt_path: "/work-ceph/mbui/clkd/logs/runs/2022-03-05/23-25-04/checkpoints/last.ckpt"
 
 # Random Seed
 seed: 42
@@ -118,10 +120,13 @@ seed: 42
 work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
-data_dir: /pfs/work7/workspace/scratch/ma_mbui-ma_mbui-clkd
+data_dir: /work-ceph/mbui/clkd/data
 
 # Path to CC100 Folder for MLM pretraining
 cc: ${data_dir}/cc100
+
+# Path to parallel data Folder
+parallel_data: ${data_dir}/parallel_data
 
 # Path to JW300 Folder for MLM Validation
 jw300: ${data_dir}/jw300
