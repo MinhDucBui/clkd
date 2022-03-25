@@ -5,9 +5,9 @@ defaults:
 
 base_loss:
   att_mse:
-    mapping: {4: 12}
+    mapping: {6: 12}
   hidden_mse:
-    mapping: {4: 12}
+    mapping: {6: 12}
 
 loss_weighting:
   hidden_mse: 0.5

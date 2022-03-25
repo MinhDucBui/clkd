@@ -1,13 +1,23 @@
-_target_: src.loss.loss.GeneralLoss
+# @package _global_
+
 defaults:
-  - base_loss@base_loss.mlm: mlm.yaml
-  - base_loss@base_loss.softtargets_kl: softtargets_kl.yaml
+  - base_loss@students.individual.loss.base_loss.mlm: mlm.yaml
+  - base_loss@students.individual.loss.base_loss.softtargets_kl: softtargets_kl.yaml
 
-base_loss:
-  softtargets_kl:
-    temperature: 4.0
+students:
+  individual:
+    loss:
+      _target_: src.loss.loss.GeneralLoss
 
-loss_weighting:
-  mlm: 0.5
-  softtargets_kl: 0.5
+      base_loss:
+        softtargets_kl:
+          temperature: 4.0
+
+      loss_weighting:
+        mlm: 0.5
+        softtargets_kl: 0.5
+
+    model:
+      cfg:
+        output_attentions: false
 
