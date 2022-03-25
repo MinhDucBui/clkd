@@ -43,7 +43,7 @@ class BERTScoreMRR(Metric):
         self.labels.append(labels)
 
     def compute(self):
-        self.last_hidden_representation = [x for _, x in sorted(zip(self.labels, self.last_hidden_representation), 
+        self.last_hidden_representation = [x for _, x in sorted(zip(self.labels, self.last_hidden_representation),
                                                                 key=lambda pair: pair[0])]
         bert_score = compute_bertscore(self.last_hidden_representation)
         reciprocal_rank = get_reciprocal_rank(bert_score)
