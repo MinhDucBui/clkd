@@ -2,7 +2,7 @@
 
 wandb:
   _target_: pytorch_lightning.loggers.wandb.WandbLogger
-  project: "baselines_v4"
+  project: "baselines_v5"
   name: null
   save_dir: "."
   offline: False # set True to store all logs only locally
