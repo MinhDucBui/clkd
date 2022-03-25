@@ -11,7 +11,7 @@ from src.utils.utils import keep_only_model_forward_arguments, get_model_languag
     append_torch_in_dict, get_subset_cleaned_batch
 from src.utils.assert_functions import assert_functions
 from src.utils.debug import debug_embedding_updating
-
+from torch.nn import functional as F
 log = utils.get_logger(__name__)
 
 
@@ -38,6 +38,10 @@ class BaseModule(OptimizerMixin, EvalMixin, InitializeModelsMixin, pl.LightningM
     def teacher_collect_outputs(self, batch, batch_idx) -> None:
         """ Collects teacher outputs from forward pass"""
         for language, single_batch in batch.items():
+            # If we use parallel data, currently, we do not use the teacher
+            if len(language.split("-")) == 2:
+                continue
+
             # Calculate Teacher Outputs (don't need gradient)
             with torch.no_grad():
                 full_batch = keep_only_model_forward_arguments(self._teacher,
@@ -60,13 +64,33 @@ class BaseModule(OptimizerMixin, EvalMixin, InitializeModelsMixin, pl.LightningM
         """
 
         model_idx = optimizer_idx
-        model_languages = get_model_language(model_idx, self.student_mapping)
-        # model_languages: All languages that model contains, for monolingual models, there will be one language, for bilingual two, etc.
-        abs_loss = 0
-
         # Iterate over those languages to get corresponding outputs from teacher
         assert len(self.teacher_outputs) > 0
 
+        # Objectives
+        monodata_loss = self.monodata_training(batch, model_idx)
+        abs_loss = monodata_loss
+
+        # Logging
+        output = self.base_logging(model_idx, abs_loss)
+
+        return output
+
+    def base_logging(self, model_idx, abs_loss):
+        model_name = self.student_mapping["id_model"][model_idx]["model_name"]
+        tqdm_dict = {"train" + "/" + model_name + '/train_loss': abs_loss}
+        output = {
+            'loss': abs_loss,
+            'progress_bar': tqdm_dict,
+            'log': tqdm_dict
+        }
+        for key, value in output["log"].items():
+            self.log(key, value)
+        return output
+
+    def monodata_training(self, batch, model_idx):
+        monodata_loss = 0
+        model_languages = get_model_language(model_idx, self.student_mapping)
         for language in model_languages:
             # Get teacher outputs for a single language
             subset_teacher_output = self.teacher_outputs[language]
@@ -77,21 +101,12 @@ class BaseModule(OptimizerMixin, EvalMixin, InitializeModelsMixin, pl.LightningM
 
             # Assert that batch contains labels, they are needed for student MLM loss computation
             assert "labels" in language_batch
-            abs_loss += self.loss[model_idx](subset_teacher_output, student_outputs, labels=language_batch["labels"])
+            monodata_loss += self.loss[model_idx](subset_teacher_output, student_outputs, labels=language_batch["labels"])
 
-        model_name = self.student_mapping["id_model"][model_idx]["model_name"]
-        tqdm_dict = {"train" + "/" + model_name + '/train_loss': abs_loss}
-        output = {
-            'loss': abs_loss,
-            'progress_bar': tqdm_dict,
-            'log': tqdm_dict
-        }
-        for key, value in output["log"].items():
-            self.log(key, value)
-
-        return output
+        return monodata_loss
 
     def base_training_step(self, batch, batch_idx, optimizer_idx=0):
+        # Parallel Data
         if optimizer_idx == 0:
             self.teacher_collect_outputs(batch, batch_idx)
 
@@ -104,6 +119,7 @@ class BaseModule(OptimizerMixin, EvalMixin, InitializeModelsMixin, pl.LightningM
             --> First collect teacher outputs for a given batch
             --> For a given batch, loop over all student models (optimizer corresponds to a model) and compute training pipeline for a student
         """
+
         return self.base_training_step(batch, batch_idx, optimizer_idx)
 
     def forward(self, batch, model_idx, language):
