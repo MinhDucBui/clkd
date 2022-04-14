@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 from src.distillation.mixin.optimizer import OptimizerMixin
 from src.distillation.mixin.eval import EvalMixin
 import torch
+from src.distillation.mixin.initialize_models import InitializeModelsMixin
 from omegaconf import DictConfig
 from src.utils import utils
 from src.models.model import initialize_model
@@ -14,7 +15,6 @@ from src.utils.assert_functions import assert_functions
 from src.utils.mappings import create_mapping
 from src.datamodules.mixed_data import MixedDataModule
 import itertools
-from src.utils.parameter_sharing import embedding_sharing, weight_sharing
 from src.utils.debug import debug_embedding_updating
 from src.utils.hydra import prepare_retrieval_eval
 from src.models.modules.pooling import cls, mean
@@ -22,7 +22,7 @@ from src.models.modules.pooling import cls, mean
 log = utils.get_logger(__name__)
 
 
-class TeacherEval(OptimizerMixin, EvalMixin, pl.LightningModule):
+class TeacherEval(OptimizerMixin, EvalMixin, InitializeModelsMixin, pl.LightningModule):
 
     def __init__(
             self,
@@ -36,66 +36,18 @@ class TeacherEval(OptimizerMixin, EvalMixin, pl.LightningModule):
 
         self.save_hyperparameters()
         self.cfg = cfg
-        self.teacher_cfg = cfg.teacher
-        self.students_cfg = cfg.students
-        self.individual_students_cfg = cfg.students.individual
         self.data_cfg = cfg.datamodule
         self.trainer_cfg = cfg.trainer
-        self.students_model_cfg = {}
-        for model_name, model_cfg in self.individual_students_cfg.items():
-            if "student_" not in model_name:
-                continue
-            self.students_model_cfg[model_name] = model_cfg
-        self.embedding_sharing_cfg = cfg.students.embed_sharing
-        self.weight_sharing_cfg = cfg.students.weight_sharing_across_students
-        self.validation_epoch_index = 0
         
         self.hidden_state_index = -1
-        if "hidden_state_index" in cfg.keys():
-            self.hidden_state_index = cfg.hidden_state_index
-
-        # Initialize Evaluation
-        self.evaluation_cfg = cfg.evaluation
-        self.evaluation_cfg = initialize_evaluation_cfg(self.evaluation_cfg)
-
-        # Map language to id, student to languages and get validation tasks
-        self.language_mapping, self.student_mapping, self.validation_mapping, self.val_dataset_mapping \
-            = create_mapping(self.students_cfg, self.evaluation_cfg, cfg.datamodule)
-
-        self.number_of_models = len(self.student_mapping["model_id"])
+        if "hidden_state_index" in cfg.distillation_setup.keys():
+            self.hidden_state_index = cfg.distillation_setup.hidden_state_index
 
         pl.LightningModule.__init__(self)
         super().__init__()
 
-        # Init Teacher Model
-        log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
-        self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
-        self.initialize_teacher()
-        
-        # Init Students
-        self.model, self.student_tokenizers, self.loss, self.embeddings = [], [], [], []
-        self.initialize_student_components()
         
         self.a = torch.ones((2, 2), requires_grad=True)
-
-    def initialize_teacher(self):
-        self.teacher_tokenizer, self._teacher, _ = initialize_model(self.teacher_cfg)
-        self._teacher.eval()
-
-    def initialize_student_components(self):
-        for model_name, model_cfg in self.students_model_cfg.items():
-            tokenizer, model, embeddings = initialize_model(model_cfg, self._teacher)
-            exec("self.%s = %s" % (model_name, "model"))
-            for language, embedding in embeddings.items():
-                exec("self.%s = %s" % (model_name + "_" + language, "embedding"))
-            self.model.append(model)
-            self.embeddings.append(embeddings)
-            self.student_tokenizers.append(tokenizer)
-            self.loss.append(hydra.utils.instantiate(model_cfg["loss"]))
-
-        embedding_sharing(self.embeddings, self.embedding_sharing_cfg, self.student_mapping)
-        weight_sharing(self.weight_sharing_cfg, self.model, self.student_mapping)
-
 
     # Trainer: Loops through batches (batch_idx) and then loops through optimizers (optimizer_idx)
     # In our case: One optimizer corresponds to a model
@@ -158,17 +110,17 @@ class TeacherEval(OptimizerMixin, EvalMixin, pl.LightningModule):
                 logger_name = model_cfg["logger_name"]
                 if k == "perplexity":
                     pass
-                elif logger_name == "val/retrieval_cos_cls/student_turkish_tr-student_english_en":
+                elif "retrieval_cos_cls" in logger_name:
                     kwargs = {}
                     kwargs["cls"] = cls(outputs.hidden_states[self.hidden_state_index], batch["attention_mask"])
                     kwargs["labels"] = batch["labels"]
                     v["metric"].update(**kwargs)
-                elif logger_name == "val/retrieval_cos_mean/student_turkish_tr-student_english_en":
+                elif "retrieval_cos_mean" in logger_name:
                     kwargs = {}
                     kwargs["cls"] = mean(outputs.hidden_states[self.hidden_state_index], batch["attention_mask"])
                     kwargs["labels"] = batch["labels"]
                     v["metric"].update(**kwargs)
-                elif k == "bertscore_mrr":
+                elif "bertscore_mrr" in k:
                     kwargs = {}
                     kwargs["last_hidden_representation"] = outputs.hidden_states[self.hidden_state_index]
                     kwargs["labels"] = batch["labels"]

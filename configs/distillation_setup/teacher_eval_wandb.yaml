@@ -3,3 +3,4 @@ _target_: src.distillation.teacher_eval_wandb.TeacherEval
 
 validate_before_training: True
 hidden_state_index: -1
+# hidden_state_index: -7
