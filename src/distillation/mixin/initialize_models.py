@@ -37,7 +37,7 @@ class InitializeModelsMixin:
             = create_mapping(self.students_cfg, self.evaluation_cfg, self.cfg.datamodule)
 
         self.number_of_models = len(self.student_mapping["model_id"])
-        print(self.student_mapping)
+
         # Init Teacher Model
         log.info(f"Instantiating Teacher model <{self.teacher_cfg.model._target_}>")
         self.teacher_tokenizer, self._teacher, self.teacher_outputs = None, None, {}
