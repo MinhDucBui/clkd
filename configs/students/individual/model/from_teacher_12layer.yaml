@@ -7,10 +7,10 @@ teacher: None
 
 cfg:
   hidden_size: 768 # must be dividable by no. of heads!
-  num_hidden_layers: 6
+  num_hidden_layers: 12
 
 weights_from_teacher:
   embeddings: True
   transformer_blocks: True
 
-mapping: {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5} # Careful! Layer numbering from 0. E.g. Bert has 0, ..., 11 layers!
+mapping: {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11} # Careful! Layer numbering from 0. E.g. Bert has 0, ..., 11 layers!
