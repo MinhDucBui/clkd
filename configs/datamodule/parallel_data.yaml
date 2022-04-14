@@ -1,0 +1,11 @@
+_recursive_: False
+_target_: src.datamodules.parallel_data.ParallelDataModule
+
+defaults:
+  - /collate_fn: parallel_padding
+
+pin_memory: False
+data_dir: ${parallel_data}
+batch_size: 4
+num_workers: 0
+

@@ -1,0 +1,11 @@
+# @package _global_
+defaults:
+  - ../datamodule@datamodule.train_parallel_data: parallel_data.yaml
+
+distillation_setup:
+  _recursive_: false
+  _target_: src.distillation.parallel_data.ParallelDataDistillation
+
+  loss_weights:
+    mono_loss: 0.5
+    parallel_loss: 0.5

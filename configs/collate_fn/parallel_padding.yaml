@@ -1,0 +1,2 @@
+_target_: src.utils.hydra.partial
+_partial_: src.datamodules.module.collators.ParallelDataCollatorWithPadding
