@@ -11,6 +11,6 @@ base_loss:
     mapping: {4: 12}
 
 loss_weighting:
-  mlm: 0.005
-  softtargets_kl: 0.005
-  hidden_mse: 0.99
+  mlm: 0.0005
+  softtargets_kl: 0.0005
+  hidden_mse: 0.999

@@ -63,12 +63,13 @@ class EvalMixin:
     log: Callable
 
     def __init__(self) -> None:
-
+        super().__init__()
         self.evaluation = DictConfig({})
         self.metrics = DictConfig({})
+
         for index, single_item in enumerate(self.validation_mapping):
             # hparams used to fast-forward required attributes
-            single_item["cfg"] = hydra.utils.instantiate(self.cfg.students.evaluation[single_item["task_name"]])
+            single_item["cfg"] = hydra.utils.instantiate(self.cfg.evaluation[single_item["task_name"]])
             for metric_name, metric in single_item["cfg"]["metrics"].items():
                 exec("self.%s = %s" % (single_item["model_name"] + "_" + single_item["task_name"] + "_" + metric_name \
                                        + "_" + str(index), "metric['metric']"))
@@ -160,6 +161,7 @@ class EvalMixin:
             outputs = self.forward(batch={key: value for key, value in batch.items() if key not in ["labels"]},
                                    model_idx=model_idx,
                                    language=language)
+
         if self.evaluation.apply.outputs is not None:
             outputs = self.evaluation.apply.outputs(outputs, batch)
 
@@ -193,7 +195,8 @@ class EvalMixin:
                 break
         for k, v in self.metrics.items():
             if getattr(v, "on_step", False):
-                self.log(f"{stage}/{k}", v["metric"].compute(), prog_bar=True)
+                metric_end = v["metric"].compute()
+                self.log(f"{stage}/{k}", metric_end, prog_bar=True)
             if getattr(v, "on_epoch", False):
                 kwargs: dict = self.prepare_metric_input(outputs, None, v.compute)
                 self.log(f"{stage}/{k}", v["metric"](**kwargs), prog_bar=True, on_epoch=True)

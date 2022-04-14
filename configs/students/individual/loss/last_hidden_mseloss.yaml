@@ -5,6 +5,7 @@ defaults:
 base_loss:
   hidden_mse:
     mapping: {4: 12}
+    cls_token_weight: 1
 
 loss_weighting:
   hidden_mse: 1.0

@@ -1,0 +1,11 @@
+_recursive_: False
+_target_: src.datamodules.xtreme_tatoeba.XtremeTatoebaDataModule
+
+defaults:
+  - /collate_fn: mlm
+
+max_length: 1000
+batch_size: 4
+num_workers: 0
+pin_memory: False
+

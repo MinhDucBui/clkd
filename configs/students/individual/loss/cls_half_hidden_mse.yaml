@@ -1,0 +1,11 @@
+_target_: src.loss.loss.GeneralLoss
+defaults:
+  - base_loss@base_loss.hidden_mse: hidden_mse.yaml
+
+base_loss:
+  hidden_mse:
+    mapping: {4: 6}
+    cls_token_weight: 20
+
+loss_weighting:
+  hidden_mse: 1.0

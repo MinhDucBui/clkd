@@ -1,0 +1,10 @@
+_target_: src.loss.loss.GeneralLoss
+defaults:
+  - base_loss@base_loss.hidden_mse: hidden_mse.yaml
+
+base_loss:
+  hidden_mse:
+    mapping: {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6}
+
+loss_weighting:
+  hidden_mse: 1.0

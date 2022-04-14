@@ -1,55 +1,70 @@
 from typing import Optional, List, Union
 from torch.utils.data.dataloader import DataLoader
-from src.datamodules.base import BaseDataModule
+from pytorch_lightning import LightningDataModule
 import hydra
-from omegaconf import DictConfig
 
 
-class MixedDataModule(BaseDataModule):
+class MixedDataModule(LightningDataModule):
     def __init__(
             self,
-            data_cfg: DictConfig,
-            eval_cfg: Optional[DictConfig],
-            s_tokenizer: list,
-            t_tokenizer,
-            train_languages,
-            val_languages,
+            cfg_datamodule,
             language_mapping,
+            student_tokenizers,
+            teacher_tokenizer,
             *args,
             **kwargs,
     ):
-        # TODO: Change to corresponding Tokenizer. For now, use teacher tokenizer.
-        self.tokenizer = t_tokenizer
+        super().__init__()
 
-        # see BaseDataModule
-        super().__init__(tokenizer=self.tokenizer, *args, **kwargs)
-
-        self.train_datamodule = hydra.utils.instantiate(data_cfg.train,
-                                                        s_tokenizer=s_tokenizer,
-                                                        t_tokenizer=t_tokenizer,
-                                                        languages=train_languages,
+        self.train_datamodule = hydra.utils.instantiate(cfg_datamodule.train,
+                                                        languages=list(language_mapping["id_lang"].values()),
                                                         language_mapping=language_mapping,
-                                                        )
-        self.val_datamodule = hydra.utils.instantiate(data_cfg.val,
-                                                      eval_cfg=eval_cfg,
-                                                      s_tokenizer=s_tokenizer,
-                                                      t_tokenizer=t_tokenizer,
-                                                      languages=val_languages,
-                                                      language_mapping=language_mapping,
-                                                      )
-        # TODO: Too much hardcoded. Generalize.
-        self.validation_dataset_mapping = self.val_datamodule.validation_dataset_mapping
+                                                        s_tokenizer=student_tokenizers,
+                                                        t_tokenizer=teacher_tokenizer)
+
+        if "train_parallel_data" in cfg_datamodule.keys():
+            self.parallel_data = True
+            self.train_parallel_datamodule = hydra.utils.instantiate(cfg_datamodule.train_parallel_data,
+                                                                     languages=list(
+                                                                         language_mapping["id_lang"].values()),
+                                                                     language_mapping=language_mapping,
+                                                                     s_tokenizer=student_tokenizers,
+                                                                     t_tokenizer=teacher_tokenizer)
+        else:
+            self.parallel_data = False
+
+        # Init Val Dataset
+        self.val_datamodules = []
+        for key, value in cfg_datamodule.items():
+            if "val" in key:
+                val_datamodule = hydra.utils.instantiate(value,
+                                                         languages=list(language_mapping["id_lang"].values()),
+                                                         language_mapping=language_mapping,
+                                                         s_tokenizer=student_tokenizers,
+                                                         t_tokenizer=teacher_tokenizer)
+                self.val_datamodules.append(val_datamodule)
 
     def prepare_data(self):
+        if self.parallel_data:
+            self.train_parallel_datamodule.prepare_data()
         self.train_datamodule.prepare_data()
-        self.val_datamodule.prepare_data()
+        for val_datamodule in self.val_datamodules:
+            val_datamodule.prepare_data()
 
     def setup(self, stage: Optional[str] = None):
+        if self.parallel_data:
+            self.train_parallel_datamodule.setup()
         self.train_datamodule.setup()
-        self.val_datamodule.setup()
+        for val_datamodule in self.val_datamodules:
+            val_datamodule.setup()
 
-    def train_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
+    def train_dataloader(self) -> Union[DataLoader, List[DataLoader], dict[DataLoader]]:
+        train_data = self.train_datamodule.train_dataloader()
+        if self.parallel_data:
+            train_parallel = self.train_parallel_datamodule.train_dataloader()
+            return {**train_parallel, **train_data}
         return self.train_datamodule.train_dataloader()
 
     def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
-        return self.val_datamodule.val_dataloader()
+        val_dataloaders = [loader.val_dataloader() for loader in self.val_datamodules]
+        return val_dataloaders
