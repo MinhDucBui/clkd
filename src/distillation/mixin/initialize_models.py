@@ -72,7 +72,9 @@ class InitializeModelsMixin:
             return
 
         for index in range(len(models)):
-            assert len(embeddings[index]) == 1, "Tie Output Embedding only for monolingual implemented!"
+            # Check if all embeddings are the same
+            all_same = all(x == list(embeddings[index].values())[0] for x in embeddings[index].values())
+            assert all_same, "Tie Output Embedding only for monolingual embeddings implemented!"
             language = list(embeddings[index].keys())[0]
             input_embeddings = embeddings[index][language].word_embeddings
             model_type = models[index].base.config.model_type
