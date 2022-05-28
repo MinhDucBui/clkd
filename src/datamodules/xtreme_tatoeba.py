@@ -7,7 +7,7 @@ from src.utils.utils import add_language_tag_tokenizer
 import hydra
 from datasets.arrow_dataset import Dataset
 
-LANG_MAPPING = {"en": "eng", "tr": "tur", "sw": "swh"}
+LANG_MAPPING = {"en": "eng", "tr": "tur", "sw": "swh", "eu": "eus", "ur": "urd"}
 
 
 class XtremeTatoebaDataModule(BaseDataModule):

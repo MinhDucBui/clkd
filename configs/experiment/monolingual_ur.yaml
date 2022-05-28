@@ -1,0 +1,60 @@
+# @package _global_
+
+
+students:
+  individual:
+    # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
+    # Order is determined by order of listed item
+    student_english:
+      languages: [ "en" ]
+    student_urdu:
+      languages: [ "ur" ]
+
+  weight_sharing_across_students: false
+  # Naming convention: ( ( {Student Name}, {Layer Number} ), ( {Student Name}, {Layer Number}) )
+  # E.g. false or
+  # - ((student_0, 1), (student_1, 1))
+  # - ((student_0, 6), (student_1, 5))
+  # Note: Embedding sharing is not allowed with this key (see key 'embed_sharing')
+
+  embed_sharing: "in_each_model"
+  # E.g. "in_each_model" <-> Share embeddings between languages in each model
+  # E.g. "in_overlapping_language" <-> Share embeddings between overlapping languages across models
+  # E.g.
+  # - ((student_1, ss), (student_0, ss))
+
+evaluation:
+  # Can also use 'teacher' as model name: Evaluate with teacher
+
+  #retrieval: null
+  retrieval_cos_cls:
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+      - ((student_urdu, ur), (student_english, en))
+  retrieval_cos_mean:
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+      - ((student_urdu, ur), (student_english, en))
+  retrieval_bertscore:
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht))
+      - ((student_urdu, ur), (student_english, en))
+
+  #mlm: null
+  mlm:
+    aggregate: false  # If multiple model-language available, then aggregate metrics or calculate separately
+    evaluate_with:  # E.g. ((student_0, en), (student_0, ht)) <-> Using parallel data or (student_0, en) <-> not using parallel data
+      - ((student_urdu, ur), (student_english, en))
+
+
+callbacks:
+  model_checkpoint:
+    monitor: "val/retrieval_bertscore/student_urdu_ur-student_english_en/bertscore_mrr"
+    every_n_train_steps: 5001 # add 1 to trainer.val_check_interval
+
+datamodule:
+  val_retrieval:
+    max_length: 1000
+    batch_size: 1
+  val_mlm:
+    max_length: 1000
+    batch_size: 1
+  train:
+    batch_size: 2
