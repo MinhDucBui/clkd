@@ -19,7 +19,7 @@ cfg:
   model_type: xlm-roberta
   num_attention_heads: 12
   num_hidden_layers: 12
-  output_attentions: false
+  output_attentions: true
   output_hidden_states: true
   output_past: true
   pad_token_id: 1

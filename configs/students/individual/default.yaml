@@ -1,7 +1,7 @@
 defaults:
   - model: from_teacher
   - tokenizer: autotokenizer
-  - loss: hinton_kl_loss
+  - loss: monoshot
   - optimizer: adamw
   - lr_scheduler: linear_warmup
   - regularization: dropout

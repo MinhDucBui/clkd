@@ -2,15 +2,15 @@ _target_: src.loss.loss.GeneralLoss
 defaults:
   - base_loss@base_loss.mlm: mlm.yaml
   - base_loss@base_loss.softtargets_kl: softtargets_kl.yaml
-  - base_loss@base_loss.hidden_cos: hidden_cos.yaml
+  - base_loss@base_loss.hidden_mse: hidden_cos.yaml
 
 base_loss:
   softtargets_kl:
     temperature: 4.0
-  hidden_cos:
-    mapping: {6: 12}
+  hidden_mse:
+    mapping: {1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 12}
 
 loss_weighting:
   mlm: 0.0005
   softtargets_kl: 0.0005
-  hidden_cos: 0.999
+  hidden_mse: 0.333
