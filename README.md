@@ -59,6 +59,27 @@ python run.py
 python run.py students/individual/loss=monoalignment
 ```
 
+To contruct your own distillation loss, we provide [bass losses](https://github.com/MinhDucBui/clkd/tree/main/configs/students/individual/loss/base_loss), that can be used to construct the final loss. Furthermore, we provide all distillation losses used in this thesis [here](https://github.com/MinhDucBui/clkd/tree/main/configs/students/individual/loss).
+  
+Example of constucting the distillation loss from the MLM loss and logit distillation with CE loss with equal weighting.
+  
+
+```
+_target_: src.loss.loss.GeneralLoss
+defaults:
+  - base_loss@base_loss.mlm: mlm.yaml
+  - base_loss@base_loss.softtargets_ce: softtargets_ce.yaml
+
+base_loss:
+  softtargets_ce:
+    temperature: 4.0
+
+loss_weighting:
+  mlm: 0.5
+  softtargets_ce: 0.5
+```
+  
+  
 </details>
 
 <details>
@@ -88,14 +109,21 @@ To construct a custom setting, please see the documentation [here](https://githu
 </details>
 
 <details>
-<summary><b>Change Component-sharing across Students</b></summary>
+<summary><b>Embedding Sharing across Students</b></summary>
 
-First, we look at embedding sharing.
 ```bash
 # Share language embeddings only in each student, not across students.
 python run.py students.embed_sharing="in_each_model" 
 ```
 To construct a custom setting, please see the documentation [here](https://github.com/MinhDucBui/clkd/blob/main/configs/experiment/monolingual.yaml).
+
+  
+</details>
+
+<details>
+<summary><b>Layer Sharing across Students</b></summary>
+
+Please see the documentation [here](https://github.com/MinhDucBui/clkd/blob/main/configs/students/default.yaml#L4-L10).
 
   
 </details>
@@ -111,9 +139,24 @@ More architectures can be found [here](https://github.com/MinhDucBui/clkd/tree/m
 
 </details>
 
+
+<details>
+<summary><b>Student Initialization</b></summary>
+  
+> Default uses weights from the teacher.  
+```bash
+# Randomly Initialize Embedding Weights
+python run.py students.individual.model.weights_from_teacher.embeddings=False
+  
+# Randomly Initialize Layer Weights
+python run.py students.individual.model.weights_from_teacher.transformer_blocks=False
+```
+
+</details>
+
 <br>
 
-## Project Structure
+## ℹ️&nbsp;&nbsp;Project Structure
 The directory structure of new project looks like this:
 ```
 
