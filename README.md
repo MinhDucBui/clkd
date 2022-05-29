@@ -39,16 +39,18 @@ pip install -r requirements.txt
 # https://pytorch.org/get-started/
 ```
 
-Download English & Turkish dataset from cc100 [here](https://data.statmt.org/cc-100/). 
+Download English & Turkish dataset from cc100 [here](https://data.statmt.org/cc-100/). Alternatively, to speed up the downloading process, download Urdu-Swahili.
 ```bash
 # change to data folder
 cd data/cc100
 
-# Download English Data (82GB)
+# Download English Data (82GB) and Turkish Data (5.4GB)
 wget http://data.statmt.org/cc-100/en.txt.xz
-
-# Download Turkish Data (5.4GB)
 wget http://data.statmt.org/cc-100/tr.txt.xz
+
+# Alternative: Urdu (884MB) and Swahili (332MB)
+wget http://data.statmt.org/cc-100/ur.txt.xz
+wget http://data.statmt.org/cc-100/sw.txt.xz
 
 # Change back to original folder
 cd ..
@@ -63,6 +65,9 @@ export CUDA_VISIBLE_DEVICES=0
 
 # execute main script
 python run.py
+
+# Alternativ: Urdu-Swahili pair
+python run.py experiment=monolingual_urdu_swahili
 ```
 
 ### ⚡&nbsp;&nbsp;Your Superpowers
