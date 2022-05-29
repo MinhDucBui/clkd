@@ -39,6 +39,23 @@ pip install -r requirements.txt
 # https://pytorch.org/get-started/
 ```
 
+Download English & Turkish dataset from cc100 [here](https://data.statmt.org/cc-100/). 
+```bash
+# change to data folder
+cd data/cc100
+
+# Download English Data (82GB)
+wget http://data.statmt.org/cc-100/en.txt.xz
+
+# Download Turkish Data (5.4GB)
+wget http://data.statmt.org/cc-100/tr.txt.xz
+
+# Change back to original folder
+cd ..
+cd ..
+
+```
+
 Execute the main script. The default setting uses the same strategy as MonoShot.
 ```bash
 # Choose GPU Device
