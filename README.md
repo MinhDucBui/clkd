@@ -156,7 +156,7 @@ python run.py students.individual.model.weights_from_teacher.transformer_blocks=
 
 <br>
 
-## Project Structure
+## ℹ️&nbsp;&nbsp;Project Structure
 The directory structure of new project looks like this:
 ```
 
