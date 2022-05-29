@@ -47,7 +47,7 @@ evaluation:
 
 callbacks:
   model_checkpoint:
-    monitor: "val/retrieval_bertscore/student_swahili_sw-student_student_urdu_ur/bertscore_mrr"
+    monitor: "val/retrieval_bertscore/student_swahili_sw-student_urdu_ur/bertscore_mrr"
     every_n_train_steps: 5001 # add 1 to trainer.val_check_interval
 
 datamodule:
