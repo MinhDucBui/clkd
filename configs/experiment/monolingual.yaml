@@ -4,7 +4,9 @@
 students:
 
   individual:
-    # Naming convention: student_{UniqueName} e.g. student_0 or student_zero.
+    # Naming convention: student_{UniqueName} e.g. student_english or student_turkish.
+    # NOTICE: Later in the config file, we reference these unique names
+    # NOTICE: Change all unique names later mentioned in the config file to your chosen names
     # Order is determined by order of listed item
     student_english:
       languages: [ "en" ]
