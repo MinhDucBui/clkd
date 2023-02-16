@@ -16,7 +16,7 @@ This project enables to distill multilingual transformers into language-specific
 - Any number of students and languages per student
 - Change the teacher and student architecture 
 - Choose between monolingual, bilingual, or multilingual distillation setup
-- Compnent Sharing across students
+- Component Sharing across students
 - Initialization of students from teacher layers
 
 ## 🚀&nbsp;&nbsp;Quickstart
